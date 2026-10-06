@@ -334,87 +334,78 @@ async def punish_link_violation(
     message: discord.Message,
     is_gif: bool = False
 ):
-    try:
-        await message.delete()
+    # Zbieramy dane PRZED usunięciem wiadomości.
+    sent_content = (message.content or "").strip()
+    attachment_urls = [a.url for a in message.attachments]
+    gif_urls = [
+        a.url for a in message.attachments
+        if a.filename.lower().endswith(".gif")
+    ]
 
-    except discord.NotFound:
-        return
-
-    except discord.Forbidden:
-        print(
-            "❌ Bot nie ma uprawnień do usuwania wiadomości."
-        )
-        return
-
-    except discord.HTTPException as error:
-        print(
-            f"❌ Błąd usuwania wiadomości: {error}"
-        )
-        return
-
-    # Logowanie prób wysłania GIF-a na kanał LOGI.
+    # Logujemy próbę GIF-a/linku przed usunięciem wiadomości.
     if is_gif:
         try:
-            log_channel = message.guild.get_channel(LOGI_CHANNEL_ID)
+            log_channel = bot.get_channel(LOGI_CHANNEL_ID)
+            if log_channel is None:
+                log_channel = await bot.fetch_channel(LOGI_CHANNEL_ID)
 
-            if log_channel is not None:
-                log_embed = discord.Embed(
-                    title="🚫 Próba wysłania GIF-a",
-                    color=discord.Color.red(),
-                    timestamp=datetime.now()
-                )
+            what_was_sent = sent_content or "Brak tekstu"
+            if attachment_urls:
+                what_was_sent += "\n" + "\n".join(attachment_urls)
+
+            log_embed = discord.Embed(
+                title="🚫 Próba wysłania GIF-a",
+                color=discord.Color.red(),
+                timestamp=datetime.now()
+            )
+            log_embed.add_field(
+                name="👤 Kto wysłał",
+                value=f"{message.author.mention}\n`{message.author}`",
+                inline=False
+            )
+            log_embed.add_field(
+                name="📍 Gdzie",
+                value=f"{message.channel.mention}\n`{message.channel.name}`",
+                inline=True
+            )
+            log_embed.add_field(
+                name="🔗 Co wysłał",
+                value=what_was_sent[:1024],
+                inline=False
+            )
+            if gif_urls:
                 log_embed.add_field(
-                    name="👤 Użytkownik",
-                    value=f"{message.author.mention} (`{message.author}` / `{message.author.id}`)",
+                    name="🖼️ Link do GIF-a",
+                    value="\n".join(gif_urls)[:1024],
                     inline=False
                 )
+            elif sent_content:
+                # Przy GIF-ach z Tenor/Giphy/Discord link jest w treści wiadomości.
                 log_embed.add_field(
-                    name="📍 Kanał",
-                    value=f"{message.channel.mention} (`{message.channel.id}`)",
-                    inline=True
-                )
-
-                sent_content = (message.content or "").strip()
-                gif_urls = []
-
-                for attachment in message.attachments:
-                    if attachment.filename.lower().endswith(".gif"):
-                        gif_urls.append(attachment.url)
-
-                if sent_content:
-                    what_was_sent = sent_content[:1000]
-                elif gif_urls:
-                    what_was_sent = "\n".join(gif_urls)[:1000]
-                else:
-                    what_was_sent = "GIF wysłany jako załącznik"
-
-                log_embed.add_field(
-                    name="🔗 Co wysłano",
-                    value=what_was_sent,
+                    name="🖼️ Link / treść GIF-a",
+                    value=sent_content[:1024],
                     inline=False
                 )
+            log_embed.set_footer(text="666.6MC • Logi filtra GIF")
 
-                if gif_urls:
-                    log_embed.add_field(
-                        name="🖼️ Link do GIF-a",
-                        value="\n".join(gif_urls)[:1000],
-                        inline=False
-                    )
+            await log_channel.send(
+                embed=log_embed,
+                allowed_mentions=discord.AllowedMentions.none()
+            )
 
-                log_embed.add_field(
-                    name="🕐 Data",
-                    value=f"<t:{int(datetime.now().timestamp())}:F>",
-                    inline=True
-                )
-                log_embed.set_footer(text="666.6MC • Logi filtra GIF")
+        except (discord.HTTPException, discord.Forbidden, discord.NotFound) as error:
+            print(f"❌ Nie udało się wysłać logu GIF: {error}")
 
-                await log_channel.send(
-                    embed=log_embed,
-                    allowed_mentions=discord.AllowedMentions.none()
-                )
-
-        except discord.HTTPException as error:
-            print(f"❌ Błąd wysyłania logu GIF: {error}")
+    try:
+        await message.delete()
+    except discord.NotFound:
+        return
+    except discord.Forbidden:
+        print("❌ Bot nie ma uprawnień do usuwania wiadomości.")
+        return
+    except discord.HTTPException as error:
+        print(f"❌ Błąd usuwania wiadomości: {error}")
+        return
 
     try:
         await message.channel.send(
@@ -867,43 +858,37 @@ class TicketSelect(discord.ui.Select):
 
             discord.SelectOption(
                 label="Pomoc",
-                description="Potrzebujesz pomocy?",
-                emoji="🆘",
+                                emoji="🆘",
                 value="pomoc"
             ),
 
             discord.SelectOption(
                 label="Rekrutacja",
-                description="Sprawa związana z rekrutacją",
-                emoji="📋",
+                                emoji="📋",
                 value="rekrutacja"
             ),
 
             discord.SelectOption(
                 label="Media",
-                description="Sprawy związane z mediami",
-                emoji="🎥",
+                                emoji="🎥",
                 value="media"
             ),
 
             discord.SelectOption(
                 label="Błąd",
-                description="Znalazłeś błąd na serwerze",
-                emoji="🐛",
+                                emoji="🐛",
                 value="blad"
             ),
 
             discord.SelectOption(
                 label="Płatność",
-                description="Sprawa związana z płatnością",
-                emoji="💳",
+                                emoji="💳",
                 value="platnosc"
             ),
 
             discord.SelectOption(
                 label="Inne",
-                description="Inne zgłoszenie",
-                emoji="💡",
+                                emoji="💡",
                 value="inne"
             )
         ]
@@ -969,13 +954,7 @@ def create_ticket_embed():
         title="🎫 CENTRUM TICKETÓW 666.6MC",
         description=(
             "Potrzebujesz pomocy? 💚\n\n"
-            "Wybierz odpowiednią kategorię z menu poniżej.\n\n"
-            "🆘 **Pomoc** — pomoc z serwerem\n"
-            "📋 **Rekrutacja** — sprawy rekrutacyjne\n"
-            "🎥 **Media** — współpraca/media\n"
-            "🐛 **Błąd** — zgłoszenie błędu\n"
-            "💳 **Płatność** — płatności\n"
-            "💡 **Inne** — pozostałe sprawy"
+            "Wybierz odpowiednią kategorię z menu poniżej."
         ),
         color=discord.Color.from_rgb(
             46,
@@ -1925,6 +1904,9 @@ class PollData:
         self.finished = False
 
 
+ACTIVE_POLLS = []
+
+
 def create_poll_embed(poll):
 
     votes_one = len(poll.votes_one)
@@ -2244,6 +2226,8 @@ class PollModal(discord.ui.Modal):
             creator_id=interaction.user.id
         )
 
+        ACTIVE_POLLS.append(poll)
+
         view = PollView(poll)
 
         try:
@@ -2319,6 +2303,61 @@ async def ankieta(
     await interaction.response.send_modal(
         PollModal()
     )
+
+
+@bot.tree.command(
+    name="glosy",
+    description="Pokazuje, kto zagłosował na którą opcję w trwającej ankiecie."
+)
+async def glosy(interaction: discord.Interaction):
+    if interaction.guild is None:
+        await safe_response(interaction, "❌ Komenda dostępna tylko na serwerze.")
+        return
+
+    # Tylko CEO może podejrzeć listę głosujących.
+    ceo_role = interaction.guild.get_role(CEO_ROLE_ID)
+    if ceo_role is None or ceo_role not in interaction.user.roles:
+        await safe_response(interaction, "❌ Tylko CEO może korzystać z tej komendy.")
+        return
+
+    # Lista ankiet jest przechowywana w pamięci bota.
+    polls = [poll for poll in ACTIVE_POLLS if not poll.finished]
+
+    if not polls:
+        await safe_response(interaction, "ℹ️ Nie ma obecnie trwającej ankiety.")
+        return
+
+    for poll in polls:
+        one_names = []
+        two_names = []
+
+        for user_id in poll.votes_one:
+            member = interaction.guild.get_member(user_id)
+            one_names.append(member.mention if member else f"`{user_id}`")
+
+        for user_id in poll.votes_two:
+            member = interaction.guild.get_member(user_id)
+            two_names.append(member.mention if member else f"`{user_id}`")
+
+        embed = discord.Embed(
+            title="🗳️ GŁOSY — ANKIETA",
+            description=f"**{poll.question}**",
+            color=discord.Color.from_rgb(46, 204, 113)
+        )
+        embed.add_field(
+            name=f"🟢 {poll.option_one} — {len(one_names)}",
+            value="\n".join(one_names)[:1024] if one_names else "Brak głosów",
+            inline=False
+        )
+        embed.add_field(
+            name=f"🔵 {poll.option_two} — {len(two_names)}",
+            value="\n".join(two_names)[:1024] if two_names else "Brak głosów",
+            inline=False
+        )
+        embed.set_footer(text="666.6MC • Lista głosujących")
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
 
 
 # =========================================================
