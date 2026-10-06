@@ -52,7 +52,7 @@ TECHNIK_ROLE_ID = 1539323255641341992
 DEVELOPER_ROLE_ID = 1539323093728763944
 HEAD_ADMIN_ROLE_ID = 1539322826224566342
 CEO_ROLE_ID = 1539322697283010631
-
+VERIFICATION_ROLE_ID = 1539324900551163954
 
 # =========================================================
 # FILTR LINKÓW
@@ -1863,12 +1863,79 @@ class VerificationView(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "❌ Weryfikacja jest dostępna tylko na serwerze.",
+                ephemeral=True
+            )
+            return
+
+        role = interaction.guild.get_role(VERIFICATION_ROLE_ID)
+
+        if role is None:
+            await interaction.response.send_message(
+                "❌ Nie znaleziono roli weryfikacyjnej.",
+                ephemeral=True
+            )
+            print(f"❌ Nie znaleziono roli: {VERIFICATION_ROLE_ID}")
+            return
+
+        if role in interaction.user.roles:
+            await interaction.response.send_message(
+                "ℹ️ Jesteś już zweryfikowany.",
+                ephemeral=True
+            )
+            return
+
+        bot_member = interaction.guild.me
+
+        if bot_member is None:
+            await interaction.response.send_message(
+                "❌ Nie udało się pobrać danych bota.",
+                ephemeral=True
+            )
+            return
+
+        if not bot_member.guild_permissions.manage_roles:
+            await interaction.response.send_message(
+                "❌ Bot nie ma uprawnienia **Zarządzanie rolami**.",
+                ephemeral=True
+            )
+            return
+
+        if role >= bot_member.top_role:
+            await interaction.response.send_message(
+                "❌ Bot nie może nadać tej roli. "
+                "Rola weryfikacyjna musi być niżej od najwyższej roli bota.",
+                ephemeral=True
+            )
+            return
+
+        try:
+            await interaction.user.add_roles(
+                role,
+                reason="Weryfikacja 666.6MC"
+            )
+
+        except discord.Forbidden:
+            await interaction.response.send_message(
+                "❌ Bot nie może nadać tej roli. Sprawdź uprawnienia i hierarchię ról.",
+                ephemeral=True
+            )
+            return
+
+        except discord.HTTPException as error:
+            print(f"❌ Błąd nadawania roli: {error}")
+            await interaction.response.send_message(
+                "❌ Wystąpił błąd podczas nadawania roli.",
+                ephemeral=True
+            )
+            return
 
         await interaction.response.send_message(
-            "✅ Weryfikacja została wykonana.",
+            f"✅ Zostałeś zweryfikowany! Nadano rolę {role.mention}.",
             ephemeral=True
         )
-
 
 # =========================================================
 # ANKIETY
