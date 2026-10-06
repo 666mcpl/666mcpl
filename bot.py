@@ -850,37 +850,25 @@ class TicketSelect(discord.ui.Select):
 
             discord.SelectOption(
                 label="Pomoc",
-                                emoji="🆘",
+                emoji="🆘",
                 value="pomoc"
             ),
 
             discord.SelectOption(
-                label="Rekrutacja",
-                                emoji="📋",
-                value="rekrutacja"
-            ),
-
-            discord.SelectOption(
-                label="Media",
-                                emoji="🎥",
-                value="media"
-            ),
-
-            discord.SelectOption(
                 label="Błąd",
-                                emoji="🐛",
+                emoji="🐛",
                 value="blad"
             ),
 
             discord.SelectOption(
                 label="Płatność",
-                                emoji="💳",
+                emoji="💳",
                 value="platnosc"
             ),
 
             discord.SelectOption(
                 label="Inne",
-                                emoji="💡",
+                emoji="💡",
                 value="inne"
             )
         ]
@@ -954,7 +942,6 @@ def create_ticket_embed():
             113
         )
     )
-
 
 # =========================================================
 # REKRUTACJA
