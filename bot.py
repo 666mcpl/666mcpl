@@ -341,59 +341,65 @@ async def punish_link_violation(
         if a.filename.lower().endswith(".gif")
     ]
 
-    # Logujemy próbę GIF-a/linku przed usunięciem wiadomości.
-    if is_gif:
-        try:
-            log_channel = bot.get_channel(LOGI_CHANNEL_ID)
-            if log_channel is None:
-                log_channel = await bot.fetch_channel(LOGI_CHANNEL_ID)
+    # Logujemy każdą zablokowaną próbę linku/GIF-a przed usunięciem wiadomości.
+    try:
+        log_channel = bot.get_channel(LOGI_CHANNEL_ID)
 
-            what_was_sent = sent_content or "Brak tekstu"
-            if attachment_urls:
-                what_was_sent += "\n" + "\n".join(attachment_urls)
+        if log_channel is None:
+            log_channel = await bot.fetch_channel(LOGI_CHANNEL_ID)
 
-            log_embed = discord.Embed(
-                title="🚫 Próba wysłania GIF-a",
-                color=discord.Color.red(),
-                timestamp=datetime.now()
-            )
+        what_was_sent = sent_content or "Brak tekstu"
+
+        if attachment_urls:
+            what_was_sent += "\n" + "\n".join(attachment_urls)
+
+        if is_gif:
+            log_title = "🚫 Próba wysłania GIF-a"
+            log_footer = "666.6MC • Logi filtra GIF"
+        else:
+            log_title = "🚫 Próba wysłania linku"
+            log_footer = "666.6MC • Logi filtra linków"
+
+        log_embed = discord.Embed(
+            title=log_title,
+            color=discord.Color.red(),
+            timestamp=datetime.now()
+        )
+
+        log_embed.add_field(
+            name="👤 Kto wysłał",
+            value=f"{message.author.mention}\n`{message.author}`",
+            inline=False
+        )
+
+        log_embed.add_field(
+            name="📍 Gdzie",
+            value=f"{message.channel.mention}\n`{message.channel.name}`",
+            inline=True
+        )
+
+        log_embed.add_field(
+            name="🔗 Co wysłał",
+            value=what_was_sent[:1024],
+            inline=False
+        )
+
+        if gif_urls:
             log_embed.add_field(
-                name="👤 Kto wysłał",
-                value=f"{message.author.mention}\n`{message.author}`",
+                name="🖼️ Link do GIF-a",
+                value="\n".join(gif_urls)[:1024],
                 inline=False
             )
-            log_embed.add_field(
-                name="📍 Gdzie",
-                value=f"{message.channel.mention}\n`{message.channel.name}`",
-                inline=True
-            )
-            log_embed.add_field(
-                name="🔗 Co wysłał",
-                value=what_was_sent[:1024],
-                inline=False
-            )
-            if gif_urls:
-                log_embed.add_field(
-                    name="🖼️ Link do GIF-a",
-                    value="\n".join(gif_urls)[:1024],
-                    inline=False
-                )
-            elif sent_content:
-                # Przy GIF-ach z Tenor/Giphy/Discord link jest w treści wiadomości.
-                log_embed.add_field(
-                    name="🖼️ Link / treść GIF-a",
-                    value=sent_content[:1024],
-                    inline=False
-                )
-            log_embed.set_footer(text="666.6MC • Logi filtra GIF")
 
-            await log_channel.send(
-                embed=log_embed,
-                allowed_mentions=discord.AllowedMentions.none()
-            )
+        log_embed.set_footer(text=log_footer)
 
-        except (discord.HTTPException, discord.Forbidden, discord.NotFound) as error:
-            print(f"❌ Nie udało się wysłać logu GIF: {error}")
+        await log_channel.send(
+            embed=log_embed,
+            allowed_mentions=discord.AllowedMentions.none()
+        )
+
+    except (discord.HTTPException, discord.Forbidden, discord.NotFound) as error:
+        print(f"❌ Nie udało się wysłać logu linku/GIF-a: {error}")
 
     try:
         await message.delete()
