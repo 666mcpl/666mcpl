@@ -1736,6 +1736,7 @@ class MediaModal(discord.ui.Modal):
         }
 
         staff_roles = [
+            CHATMOD_ROLE_ID,
             MODERATOR_ROLE_ID,
             ADMIN_ROLE_ID,
             TECHNIK_ROLE_ID,
