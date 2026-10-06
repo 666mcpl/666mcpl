@@ -123,14 +123,6 @@ TICKET_TYPES = {
         "name": "Pomoc",
         "emoji": "🆘"
     },
-    "rekrutacja": {
-        "name": "Rekrutacja",
-        "emoji": "📋"
-    },
-    "media": {
-        "name": "Media",
-        "emoji": "🎥"
-    },
     "blad": {
         "name": "Błąd",
         "emoji": "🐛"
