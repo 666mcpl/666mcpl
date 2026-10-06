@@ -14,10 +14,9 @@ from discord.ext import commands
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-GUILD_ID = 1539322598775586938
-
 TICKET_CATEGORY_ID = 1539334265022582784
 MEDIA_CHANNEL_ID = 1553347721770045440
+BOOST_CHANNEL_ID = 1545868512491347978
 VERIFICATION_CHANNEL_ID = 1553347976662089748
 TICKET_PANEL_CHANNEL_ID = 1539334313785565184
 
@@ -1781,6 +1780,113 @@ def create_media_embed():
     )
 
 
+def create_boost_embed():
+
+    embed = discord.Embed(
+        title="🚀 ZBOOSTUJ 666MC.PL!",
+        description=(
+            "Chcesz wesprzeć nasz serwer Discord i jednocześnie otrzymać coś specjalnego? 💚\n\n"
+            "Każdy **Nitro Boost** naszego serwera to nie tylko wsparcie społeczności — "
+            "otrzymujesz również **specjalną rangę BOOSTER** na Discordzie oraz "
+            "**rangę SVIP na serwerze Minecraft 666MC.PL**. 👑\n\n"
+            "✨ **Co otrzymujesz za Boost?**\n"
+            "🚀 Specjalną rangę **BOOSTER** na Discordzie\n"
+            "👑 Rangę **SVIP** na 666MC.PL\n"
+            "💚 Wyróżnienie w społeczności\n"
+            "🎁 Dodatkowe przywileje dla wspierających\n\n"
+            "**Dziękujemy za każdy Boost!** ❤️\n"
+            "To właśnie dzięki Wam możemy dalej rozwijać **666MC.PL** i tworzyć coraz lepszą społeczność.\n\n"
+            "💚 **Wesprzyj nas Boostem i odbierz swoją rangę SVIP!**"
+        ),
+        color=discord.Color.from_rgb(46, 204, 113)
+    )
+    embed.set_footer(text="666MC.PL • System Boostów")
+    return embed
+
+
+@bot.tree.command(
+    name="media",
+    description="Wysyła panel współpracy i rangi MEDIA."
+)
+async def media(interaction: discord.Interaction):
+
+    if interaction.guild is None:
+        await safe_response(
+            interaction,
+            "❌ Komenda dostępna tylko na serwerze."
+        )
+        return
+
+    ceo_role = interaction.guild.get_role(CEO_ROLE_ID)
+
+    if ceo_role is None or ceo_role not in interaction.user.roles:
+        await safe_response(
+            interaction,
+            "❌ Tylko CEO może wysłać panel MEDIA."
+        )
+        return
+
+    channel = interaction.guild.get_channel(MEDIA_CHANNEL_ID)
+
+    if channel is None:
+        await safe_response(
+            interaction,
+            "❌ Nie znaleziono kanału MEDIA."
+        )
+        return
+
+    await channel.send(
+        embed=create_media_embed(),
+        view=MediaView()
+    )
+
+    await safe_response(
+        interaction,
+        f"✅ Panel MEDIA został wysłany na {channel.mention}."
+    )
+
+
+@bot.tree.command(
+    name="boost",
+    description="Wysyła panel informacji o Boostach Discorda."
+)
+async def boost(interaction: discord.Interaction):
+
+    if interaction.guild is None:
+        await safe_response(
+            interaction,
+            "❌ Komenda dostępna tylko na serwerze."
+        )
+        return
+
+    ceo_role = interaction.guild.get_role(CEO_ROLE_ID)
+
+    if ceo_role is None or ceo_role not in interaction.user.roles:
+        await safe_response(
+            interaction,
+            "❌ Tylko CEO może wysłać panel Boost."
+        )
+        return
+
+    channel = interaction.guild.get_channel(BOOST_CHANNEL_ID)
+
+    if channel is None:
+        await safe_response(
+            interaction,
+            "❌ Nie znaleziono kanału Boost."
+        )
+        return
+
+    await channel.send(
+        embed=create_boost_embed()
+    )
+
+    await safe_response(
+        interaction,
+        f"✅ Panel Boost został wysłany na {channel.mention}."
+    )
+
+
 # =========================================================
 # WERYFIKACJA
 # =========================================================
@@ -3419,20 +3525,11 @@ async def on_ready():
 
     try:
 
-        guild = discord.Object(
-            id=GUILD_ID
-        )
+        guild = discord.Object(id=GUILD_ID)
 
-        # Kopiuje wszystkie globalne komendy do konkretnego serwera.
-        # Dzięki temu pojawiają się od razu na serwerze 666.6MC.
-        bot.tree.copy_global_to(
-            guild=guild
-        )
+        bot.tree.copy_global_to(guild=guild)
 
-        # Synchronizuje komendy z Discordem.
-        synced = await bot.tree.sync(
-            guild=guild
-        )
+        synced = await bot.tree.sync(guild=guild)
 
         print(
             f"✅ Zsynchronizowano "
@@ -3441,20 +3538,13 @@ async def on_ready():
         )
 
         for command in synced:
-
-            print(
-                f"   └─ /{command.name}"
-            )
+            print(f"   └─ /{command.name}")
 
     except Exception as error:
 
-        import traceback
-
         print(
-            f"❌ Błąd synchronizacji slash commands: {error}"
+            f"❌ Błąd synchronizacji komend: {error}"
         )
-
-        traceback.print_exc()
 
     # =====================================================
     # PANEL WERYFIKACJI
@@ -3595,6 +3685,81 @@ async def on_ready():
         print(
             f"❌ Błąd panelu rekrutacji: {error}"
         )
+
+
+    # =====================================================
+    # PANEL MEDIA
+    # =====================================================
+
+    try:
+
+        channel = bot.get_channel(MEDIA_CHANNEL_ID)
+
+        if channel is None:
+            print("❌ Nie znaleziono kanału MEDIA.")
+        else:
+            panel_exists = False
+
+            async for message in channel.history(limit=50):
+                if (
+                    message.author == bot.user
+                    and message.embeds
+                    and message.embeds[0].title
+                    == "WSPÓŁPRACA ORAZ RANGA MEDIA — 666.6MC.PL"
+                ):
+                    panel_exists = True
+                    break
+
+            if panel_exists:
+                print("✅ Panel MEDIA już istnieje.")
+            else:
+                await channel.send(
+                    embed=create_media_embed(),
+                    view=MediaView()
+                )
+                print("✅ Panel MEDIA został wysłany.")
+
+    except discord.Forbidden:
+        print("❌ Bot nie może pisać na kanale MEDIA.")
+    except discord.HTTPException as error:
+        print(f"❌ Błąd panelu MEDIA: {error}")
+
+
+    # =====================================================
+    # PANEL BOOST
+    # =====================================================
+
+    try:
+
+        channel = bot.get_channel(BOOST_CHANNEL_ID)
+
+        if channel is None:
+            print("❌ Nie znaleziono kanału Boost.")
+        else:
+            panel_exists = False
+
+            async for message in channel.history(limit=50):
+                if (
+                    message.author == bot.user
+                    and message.embeds
+                    and message.embeds[0].title
+                    == "🚀 ZBOOSTUJ 666MC.PL!"
+                ):
+                    panel_exists = True
+                    break
+
+            if panel_exists:
+                print("✅ Panel Boost już istnieje.")
+            else:
+                await channel.send(
+                    embed=create_boost_embed()
+                )
+                print("✅ Panel Boost został wysłany.")
+
+    except discord.Forbidden:
+        print("❌ Bot nie może pisać na kanale Boost.")
+    except discord.HTTPException as error:
+        print(f"❌ Błąd panelu Boost: {error}")
 
 
 # =========================================================
