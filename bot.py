@@ -16,7 +16,6 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 
 TICKET_CATEGORY_ID = 1539334265022582784
 MEDIA_CHANNEL_ID = 1553347721770045440
-BOOST_CHANNEL_ID = 1545868512491347978
 VERIFICATION_CHANNEL_ID = 1553347976662089748
 TICKET_PANEL_CHANNEL_ID = 1539334313785565184
 
@@ -27,6 +26,8 @@ RULES_CHANNEL_ID = 1553348189292339280
 
 LOBBY_CHANNEL_ID = 1553347858294509588
 CHANGELOG_CHANNEL_ID = 1543311008221630474
+URLopy_CHANNEL_ID = 1545541960230506620
+LOG_CHANNEL_ID = 1548480034157895740
 
 # =========================================================
 # REKRUTACJA
@@ -330,7 +331,8 @@ async def punish_everyone_violation(
 # =========================================================
 
 async def punish_link_violation(
-    message: discord.Message
+    message: discord.Message,
+    is_gif: bool = False
 ):
     try:
         await message.delete()
@@ -349,6 +351,42 @@ async def punish_link_violation(
             f"❌ Błąd usuwania wiadomości: {error}"
         )
         return
+
+    # Logowanie prób wysłania GIF-a na kanał LOGI.
+    if is_gif:
+        try:
+            log_channel = message.guild.get_channel(LOG_CHANNEL_ID)
+
+            if log_channel is not None:
+                log_embed = discord.Embed(
+                    title="🚫 Próba wysłania GIF-a",
+                    color=discord.Color.red(),
+                    timestamp=datetime.now()
+                )
+                log_embed.add_field(
+                    name="👤 Użytkownik",
+                    value=f"{message.author.mention} (`{message.author}` / `{message.author.id}`)",
+                    inline=False
+                )
+                log_embed.add_field(
+                    name="📍 Kanał",
+                    value=f"{message.channel.mention} (`{message.channel.id}`)",
+                    inline=True
+                )
+                log_embed.add_field(
+                    name="🕐 Data",
+                    value=f"<t:{int(datetime.now().timestamp())}:F>",
+                    inline=True
+                )
+                log_embed.set_footer(text="666.6MC • Logi filtra GIF")
+
+                await log_channel.send(
+                    embed=log_embed,
+                    allowed_mentions=discord.AllowedMentions.none()
+                )
+
+        except discord.HTTPException as error:
+            print(f"❌ Błąd wysyłania logu GIF: {error}")
 
     try:
         await message.channel.send(
@@ -1777,113 +1815,6 @@ def create_media_embed():
             204,
             113
         )
-    )
-
-
-def create_boost_embed():
-
-    embed = discord.Embed(
-        title="🚀 ZBOOSTUJ 666MC.PL!",
-        description=(
-            "Chcesz wesprzeć nasz serwer Discord i jednocześnie otrzymać coś specjalnego? 💚\n\n"
-            "Każdy **Nitro Boost** naszego serwera to nie tylko wsparcie społeczności — "
-            "otrzymujesz również **specjalną rangę BOOSTER** na Discordzie oraz "
-            "**rangę SVIP na serwerze Minecraft 666MC.PL**. 👑\n\n"
-            "✨ **Co otrzymujesz za Boost?**\n"
-            "🚀 Specjalną rangę **BOOSTER** na Discordzie\n"
-            "👑 Rangę **SVIP** na 666MC.PL\n"
-            "💚 Wyróżnienie w społeczności\n"
-            "🎁 Dodatkowe przywileje dla wspierających\n\n"
-            "**Dziękujemy za każdy Boost!** ❤️\n"
-            "To właśnie dzięki Wam możemy dalej rozwijać **666MC.PL** i tworzyć coraz lepszą społeczność.\n\n"
-            "💚 **Wesprzyj nas Boostem i odbierz swoją rangę SVIP!**"
-        ),
-        color=discord.Color.from_rgb(46, 204, 113)
-    )
-    embed.set_footer(text="666MC.PL • System Boostów")
-    return embed
-
-
-@bot.tree.command(
-    name="media",
-    description="Wysyła panel współpracy i rangi MEDIA."
-)
-async def media(interaction: discord.Interaction):
-
-    if interaction.guild is None:
-        await safe_response(
-            interaction,
-            "❌ Komenda dostępna tylko na serwerze."
-        )
-        return
-
-    ceo_role = interaction.guild.get_role(CEO_ROLE_ID)
-
-    if ceo_role is None or ceo_role not in interaction.user.roles:
-        await safe_response(
-            interaction,
-            "❌ Tylko CEO może wysłać panel MEDIA."
-        )
-        return
-
-    channel = interaction.guild.get_channel(MEDIA_CHANNEL_ID)
-
-    if channel is None:
-        await safe_response(
-            interaction,
-            "❌ Nie znaleziono kanału MEDIA."
-        )
-        return
-
-    await channel.send(
-        embed=create_media_embed(),
-        view=MediaView()
-    )
-
-    await safe_response(
-        interaction,
-        f"✅ Panel MEDIA został wysłany na {channel.mention}."
-    )
-
-
-@bot.tree.command(
-    name="boost",
-    description="Wysyła panel informacji o Boostach Discorda."
-)
-async def boost(interaction: discord.Interaction):
-
-    if interaction.guild is None:
-        await safe_response(
-            interaction,
-            "❌ Komenda dostępna tylko na serwerze."
-        )
-        return
-
-    ceo_role = interaction.guild.get_role(CEO_ROLE_ID)
-
-    if ceo_role is None or ceo_role not in interaction.user.roles:
-        await safe_response(
-            interaction,
-            "❌ Tylko CEO może wysłać panel Boost."
-        )
-        return
-
-    channel = interaction.guild.get_channel(BOOST_CHANNEL_ID)
-
-    if channel is None:
-        await safe_response(
-            interaction,
-            "❌ Nie znaleziono kanału Boost."
-        )
-        return
-
-    await channel.send(
-        embed=create_boost_embed()
-    )
-
-    await safe_response(
-        interaction,
-        f"✅ Panel Boost został wysłany na {channel.mention}."
     )
 
 
@@ -3359,6 +3290,65 @@ async def on_message(
         return
 
     # =====================================================
+    # URLOPY
+    # =====================================================
+
+    if message.channel.id == URLopy_CHANNEL_ID:
+        content = message.content.strip()
+
+        if not content:
+            await bot.process_commands(message)
+            return
+
+        try:
+            await message.delete()
+
+            now = datetime.now()
+            timestamp = int(now.timestamp())
+
+            embed = discord.Embed(
+                title="🏖️ URLOP GRACZA",
+                description=(
+                    "```text\n"
+                    f"{content}\n"
+                    "```"
+                ),
+                color=discord.Color.from_rgb(52, 152, 219),
+                timestamp=now
+            )
+
+            embed.set_author(
+                name=message.author.display_name,
+                icon_url=message.author.display_avatar.url
+            )
+
+            embed.add_field(
+                name="👤 Gracz",
+                value=message.author.mention,
+                inline=True
+            )
+
+            embed.add_field(
+                name="📅 Data zgłoszenia",
+                value=f"<t:{timestamp}:F>",
+                inline=True
+            )
+
+            embed.set_footer(
+                text="666.6MC • System urlopów"
+            )
+
+            await message.channel.send(
+                embed=embed,
+                allowed_mentions=discord.AllowedMentions.none()
+            )
+
+        except discord.HTTPException as error:
+            print(f"❌ Błąd systemu urlopów: {error}")
+
+        return
+
+    # =====================================================
     # LINKI / GIF
     # =====================================================
 
@@ -3396,7 +3386,8 @@ async def on_message(
         ):
 
             await punish_link_violation(
-                message
+                message,
+                is_gif=(has_gif or attachment_is_gif)
             )
 
             return
@@ -3525,20 +3516,12 @@ async def on_ready():
 
     try:
 
-        guild = discord.Object(id=GUILD_ID)
-
-        bot.tree.copy_global_to(guild=guild)
-
-        synced = await bot.tree.sync(guild=guild)
+        synced = await bot.tree.sync()
 
         print(
             f"✅ Zsynchronizowano "
-            f"{len(synced)} slash commandów "
-            f"na serwerze {GUILD_ID}."
+            f"{len(synced)} komend."
         )
-
-        for command in synced:
-            print(f"   └─ /{command.name}")
 
     except Exception as error:
 
@@ -3685,81 +3668,6 @@ async def on_ready():
         print(
             f"❌ Błąd panelu rekrutacji: {error}"
         )
-
-
-    # =====================================================
-    # PANEL MEDIA
-    # =====================================================
-
-    try:
-
-        channel = bot.get_channel(MEDIA_CHANNEL_ID)
-
-        if channel is None:
-            print("❌ Nie znaleziono kanału MEDIA.")
-        else:
-            panel_exists = False
-
-            async for message in channel.history(limit=50):
-                if (
-                    message.author == bot.user
-                    and message.embeds
-                    and message.embeds[0].title
-                    == "WSPÓŁPRACA ORAZ RANGA MEDIA — 666.6MC.PL"
-                ):
-                    panel_exists = True
-                    break
-
-            if panel_exists:
-                print("✅ Panel MEDIA już istnieje.")
-            else:
-                await channel.send(
-                    embed=create_media_embed(),
-                    view=MediaView()
-                )
-                print("✅ Panel MEDIA został wysłany.")
-
-    except discord.Forbidden:
-        print("❌ Bot nie może pisać na kanale MEDIA.")
-    except discord.HTTPException as error:
-        print(f"❌ Błąd panelu MEDIA: {error}")
-
-
-    # =====================================================
-    # PANEL BOOST
-    # =====================================================
-
-    try:
-
-        channel = bot.get_channel(BOOST_CHANNEL_ID)
-
-        if channel is None:
-            print("❌ Nie znaleziono kanału Boost.")
-        else:
-            panel_exists = False
-
-            async for message in channel.history(limit=50):
-                if (
-                    message.author == bot.user
-                    and message.embeds
-                    and message.embeds[0].title
-                    == "🚀 ZBOOSTUJ 666MC.PL!"
-                ):
-                    panel_exists = True
-                    break
-
-            if panel_exists:
-                print("✅ Panel Boost już istnieje.")
-            else:
-                await channel.send(
-                    embed=create_boost_embed()
-                )
-                print("✅ Panel Boost został wysłany.")
-
-    except discord.Forbidden:
-        print("❌ Bot nie może pisać na kanale Boost.")
-    except discord.HTTPException as error:
-        print(f"❌ Błąd panelu Boost: {error}")
 
 
 # =========================================================
