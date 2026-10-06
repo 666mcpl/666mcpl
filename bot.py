@@ -27,7 +27,7 @@ RULES_CHANNEL_ID = 1553348189292339280
 LOBBY_CHANNEL_ID = 1553347858294509588
 CHANGELOG_CHANNEL_ID = 1543311008221630474
 URLopy_CHANNEL_ID = 1545541960230506620
-LOG_CHANNEL_ID = 1548480034157895740
+LOGI_CHANNEL_ID = 1548480034157895740
 
 # =========================================================
 # REKRUTACJA
@@ -355,7 +355,7 @@ async def punish_link_violation(
     # Logowanie prób wysłania GIF-a na kanał LOGI.
     if is_gif:
         try:
-            log_channel = message.guild.get_channel(LOG_CHANNEL_ID)
+            log_channel = message.guild.get_channel(LOGI_CHANNEL_ID)
 
             if log_channel is not None:
                 log_embed = discord.Embed(
@@ -373,6 +373,34 @@ async def punish_link_violation(
                     value=f"{message.channel.mention} (`{message.channel.id}`)",
                     inline=True
                 )
+
+                sent_content = (message.content or "").strip()
+                gif_urls = []
+
+                for attachment in message.attachments:
+                    if attachment.filename.lower().endswith(".gif"):
+                        gif_urls.append(attachment.url)
+
+                if sent_content:
+                    what_was_sent = sent_content[:1000]
+                elif gif_urls:
+                    what_was_sent = "\n".join(gif_urls)[:1000]
+                else:
+                    what_was_sent = "GIF wysłany jako załącznik"
+
+                log_embed.add_field(
+                    name="🔗 Co wysłano",
+                    value=what_was_sent,
+                    inline=False
+                )
+
+                if gif_urls:
+                    log_embed.add_field(
+                        name="🖼️ Link do GIF-a",
+                        value="\n".join(gif_urls)[:1000],
+                        inline=False
+                    )
+
                 log_embed.add_field(
                     name="🕐 Data",
                     value=f"<t:{int(datetime.now().timestamp())}:F>",
