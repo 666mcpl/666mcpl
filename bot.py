@@ -12,15 +12,7 @@ from discord.ext import commands
 # KONFIGURACJA
 # =========================================================
 
-TOKEN = os.environ.get("DISCORD_TOKEN", "").strip()
-
-# ID SERWERA — tutaj będą synchronizowane slash komendy
-GUILD_ID = 1539322598775586938
-
-print(
-    "🔐 DISCORD_TOKEN:",
-    "USTAWIONY" if TOKEN else "BRAK"
-)
+TOKEN = os.getenv("DISCORD_TOKEN")
 
 TICKET_CATEGORY_ID = 1539334265022582784
 MEDIA_CHANNEL_ID = 1553347721770045440
@@ -34,7 +26,6 @@ RULES_CHANNEL_ID = 1553348189292339280
 
 LOBBY_CHANNEL_ID = 1553347858294509588
 CHANGELOG_CHANNEL_ID = 1543311008221630474
-
 
 # =========================================================
 # REKRUTACJA
@@ -106,7 +97,6 @@ GIF_PATTERN = re.compile(
 # =========================================================
 
 intents = discord.Intents.default()
-
 intents.message_content = True
 intents.members = True
 intents.guilds = True
@@ -215,7 +205,6 @@ async def safe_response(
                 content,
                 ephemeral=ephemeral
             )
-
     except discord.HTTPException:
         pass
 
@@ -304,7 +293,6 @@ async def punish_everyone_violation(
             )
 
         except discord.Forbidden:
-
             try:
                 await message.channel.send(
                     f"⚠️ {member.mention}, "
@@ -313,7 +301,6 @@ async def punish_everyone_violation(
                     f"{MENTION_WARNINGS_REQUIRED}**.",
                     delete_after=6
                 )
-
             except discord.HTTPException:
                 pass
 
@@ -325,7 +312,6 @@ async def punish_everyone_violation(
         return
 
     try:
-
         await message.channel.send(
             f"⚠️ {member.mention}, "
             "nie możesz używać **@everyone/@here**!\n"
@@ -369,7 +355,6 @@ async def punish_link_violation(
             "linki/GIF-y są tutaj niedozwolone.",
             delete_after=5
         )
-
     except discord.HTTPException:
         pass
 
@@ -399,6 +384,8 @@ class TicketModal(discord.ui.Modal):
             max_length=32
         )
 
+        # Formularz Płatność ma osobne pola:
+        # co kupuje, za ile oraz metoda płatności.
         if ticket_type == "platnosc":
 
             self.product = discord.ui.TextInput(
@@ -458,12 +445,10 @@ class TicketModal(discord.ui.Modal):
         user = interaction.user
 
         if guild is None:
-
             await safe_response(
                 interaction,
                 "❌ Nie znaleziono serwera."
             )
-
             return
 
         category = guild.get_channel(
@@ -471,24 +456,20 @@ class TicketModal(discord.ui.Modal):
         )
 
         if category is None:
-
             await safe_response(
                 interaction,
                 "❌ Nie znaleziono kategorii ticketów."
             )
-
             return
 
         if not isinstance(
             category,
             discord.CategoryChannel
         ):
-
             await safe_response(
                 interaction,
                 "❌ Podane ID nie wskazuje na kategorię Discord."
             )
-
             return
 
         existing_ticket = find_existing_ticket(
@@ -497,14 +478,12 @@ class TicketModal(discord.ui.Modal):
         )
 
         if existing_ticket is not None:
-
             await safe_response(
                 interaction,
                 "⚠️ **Masz już otwarty ticket!**\n\n"
                 f"Twój obecny ticket: {existing_ticket.mention}\n\n"
                 "Musisz go najpierw zamknąć."
             )
-
             return
 
         ticket_info = TICKET_TYPES[
@@ -525,7 +504,6 @@ class TicketModal(discord.ui.Modal):
         )[:100]
 
         overwrites = {
-
             guild.default_role:
                 discord.PermissionOverwrite(
                     view_channel=False
@@ -608,7 +586,6 @@ class TicketModal(discord.ui.Modal):
                 "❌ Bot nie może utworzyć ticketu. "
                 "Sprawdź **Manage Channels**."
             )
-
             return
 
         except discord.HTTPException as error:
@@ -621,7 +598,6 @@ class TicketModal(discord.ui.Modal):
                 interaction,
                 "❌ Discord zwrócił błąd podczas tworzenia ticketu."
             )
-
             return
 
         embed = discord.Embed(
@@ -673,7 +649,6 @@ class TicketModal(discord.ui.Modal):
             )
 
             if self.description.value:
-
                 embed.add_field(
                     name="📝 Dodatkowe informacje",
                     value=self.description.value,
@@ -724,7 +699,6 @@ class TicketModal(discord.ui.Modal):
 class CloseTicketView(discord.ui.View):
 
     def __init__(self):
-
         super().__init__(
             timeout=None
         )
@@ -773,7 +747,6 @@ class CloseTicketView(discord.ui.View):
         is_staff = False
 
         if ticket_type:
-
             is_staff = can_access_ticket(
                 user,
                 ticket_type
@@ -785,7 +758,6 @@ class CloseTicketView(discord.ui.View):
                 interaction,
                 "❌ Nie masz uprawnień do zamknięcia tego ticketu."
             )
-
             return
 
         await safe_response(
@@ -806,13 +778,11 @@ class CloseTicketView(discord.ui.View):
             pass
 
         except discord.Forbidden:
-
             print(
                 "❌ Bot nie ma uprawnień do usunięcia ticketu."
             )
 
         except discord.HTTPException as error:
-
             print(
                 f"❌ Błąd usuwania ticketu: {error}"
             )
@@ -1389,12 +1359,10 @@ async def startrekrutacja(
     global RECRUITMENT_OPEN
 
     if interaction.guild is None:
-
         await safe_response(
             interaction,
             "❌ Komenda dostępna tylko na serwerze."
         )
-
         return
 
     ceo_role = interaction.guild.get_role(
@@ -1452,12 +1420,10 @@ async def stoprekrutacja(
     global RECRUITMENT_OPEN
 
     if interaction.guild is None:
-
         await safe_response(
             interaction,
             "❌ Komenda dostępna tylko na serwerze."
         )
-
         return
 
     ceo_role = interaction.guild.get_role(
@@ -1593,12 +1559,10 @@ class MediaModal(discord.ui.Modal):
         user = interaction.user
 
         if guild is None:
-
             await safe_response(
                 interaction,
                 "❌ Nie znaleziono serwera."
             )
-
             return
 
         category = guild.get_channel(
@@ -1614,7 +1578,6 @@ class MediaModal(discord.ui.Modal):
                 interaction,
                 "❌ Nie znaleziono kategorii ticketów."
             )
-
             return
 
         existing = find_existing_ticket(
@@ -1628,7 +1591,6 @@ class MediaModal(discord.ui.Modal):
                 interaction,
                 f"⚠️ Masz już otwarty ticket: {existing.mention}"
             )
-
             return
 
         safe_username = re.sub(
@@ -1707,7 +1669,6 @@ class MediaModal(discord.ui.Modal):
                 interaction,
                 "❌ Bot nie może utworzyć ticketu MEDIA."
             )
-
             return
 
         except discord.HTTPException as error:
@@ -1720,7 +1681,6 @@ class MediaModal(discord.ui.Modal):
                 interaction,
                 "❌ Wystąpił błąd podczas tworzenia ticketu MEDIA."
             )
-
             return
 
         embed = discord.Embed(
@@ -2053,16 +2013,9 @@ class PollView(discord.ui.View):
             return
 
         if option == 1:
-
-            self.poll.votes_one.add(
-                user_id
-            )
-
+            self.poll.votes_one.add(user_id)
         else:
-
-            self.poll.votes_two.add(
-                user_id
-            )
+            self.poll.votes_two.add(user_id)
 
         try:
 
@@ -2268,12 +2221,10 @@ async def ankieta(
 ):
 
     if interaction.guild is None:
-
         await safe_response(
             interaction,
             "❌ Komenda dostępna tylko na serwerze."
         )
-
         return
 
     ceo_role = interaction.guild.get_role(
@@ -2497,13 +2448,10 @@ async def finish_contest_after_delay(
                 )
 
                 if member is not None:
-
                     mentions.append(
                         member.mention
                     )
-
                 else:
-
                     mentions.append(
                         f"<@{winner_id}>"
                     )
@@ -2697,12 +2645,10 @@ async def konkurs(
 ):
 
     if interaction.guild is None:
-
         await safe_response(
             interaction,
             "❌ Komenda dostępna tylko na serwerze."
         )
-
         return
 
     ceo_role = interaction.guild.get_role(
@@ -2761,12 +2707,10 @@ async def regulamin(
 ):
 
     if interaction.guild is None:
-
         await safe_response(
             interaction,
             "❌ Komenda dostępna tylko na serwerze."
         )
-
         return
 
     ceo_role = interaction.guild.get_role(
@@ -2908,15 +2852,6 @@ class ChangelogModal(discord.ui.Modal):
         interaction: discord.Interaction
     ):
 
-        if interaction.guild is None:
-
-            await safe_response(
-                interaction,
-                "❌ Komenda dostępna tylko na serwerze."
-            )
-
-            return
-
         channel = interaction.guild.get_channel(
             CHANGELOG_CHANNEL_ID
         )
@@ -2931,7 +2866,6 @@ class ChangelogModal(discord.ui.Modal):
             return
 
         now = datetime.now()
-
         timestamp = int(
             now.timestamp()
         )
@@ -3009,12 +2943,10 @@ async def changelog(
 ):
 
     if interaction.guild is None:
-
         await safe_response(
             interaction,
             "❌ Komenda dostępna tylko na serwerze."
         )
-
         return
 
     ceo_role = interaction.guild.get_role(
@@ -3079,22 +3011,16 @@ class PlusMinusModal(discord.ui.Modal):
         self.add_item(self.target)
         self.add_item(self.reason)
 
-    async def on_submit(
-        self,
-        interaction: discord.Interaction
-    ):
+    async def on_submit(self, interaction: discord.Interaction):
 
         if interaction.channel is None:
-
             await safe_response(
                 interaction,
                 "❌ Nie znaleziono kanału."
             )
-
             return
 
         is_plus = self.action_type == "plus"
-
         emoji = "➕" if is_plus else "➖"
         title = "PLUS" if is_plus else "MINUS"
 
@@ -3130,19 +3056,13 @@ class PlusMinusModal(discord.ui.Modal):
         )
 
         try:
-
-            await interaction.channel.send(
-                embed=embed
-            )
-
+            await interaction.channel.send(embed=embed)
             await safe_response(
                 interaction,
-                f"✅ {title} został dodany na "
-                f"{interaction.channel.mention}."
+                f"✅ {title} został dodany na {interaction.channel.mention}."
             )
 
         except discord.HTTPException as error:
-
             print(
                 f"❌ Błąd wysyłania {title.lower()}: {error}"
             )
@@ -3153,18 +3073,13 @@ class PlusMinusModal(discord.ui.Modal):
             )
 
 
-async def open_plus_minus_modal(
-    interaction,
-    action_type
-):
+async def open_plus_minus_modal(interaction, action_type):
 
     if interaction.guild is None:
-
         await safe_response(
             interaction,
             "❌ Komenda dostępna tylko na serwerze."
         )
-
         return
 
     ceo_role = interaction.guild.get_role(
@@ -3172,21 +3087,17 @@ async def open_plus_minus_modal(
     )
 
     if ceo_role is None:
-
         await safe_response(
             interaction,
             "❌ Rola CEO nie została znaleziona."
         )
-
         return
 
     if ceo_role not in interaction.user.roles:
-
         await safe_response(
             interaction,
             "❌ Tylko CEO może korzystać z tej komendy."
         )
-
         return
 
     await interaction.response.send_modal(
@@ -3198,9 +3109,7 @@ async def open_plus_minus_modal(
     name="plus",
     description="Dodaje plusa użytkownikowi."
 )
-async def plus(
-    interaction: discord.Interaction
-):
+async def plus(interaction: discord.Interaction):
 
     await open_plus_minus_modal(
         interaction,
@@ -3212,9 +3121,7 @@ async def plus(
     name="minus",
     description="Dodaje minusa użytkownikowi."
 )
-async def minus(
-    interaction: discord.Interaction
-):
+async def minus(interaction: discord.Interaction):
 
     await open_plus_minus_modal(
         interaction,
@@ -3255,12 +3162,8 @@ async def on_message(
         and not has_bypass_role
         and (
             message.mention_everyone
-            or "@everyone" in (
-                message.content or ""
-            ).lower()
-            or "@here" in (
-                message.content or ""
-            ).lower()
+            or "@everyone" in (message.content or "").lower()
+            or "@here" in (message.content or "").lower()
         )
     ):
 
@@ -3291,7 +3194,6 @@ async def on_message(
             await message.delete()
 
             now = datetime.now()
-
             timestamp = int(
                 now.timestamp()
             )
@@ -3332,20 +3234,13 @@ async def on_message(
                 text="666.6MC • System propozycji"
             )
 
-            proposal_message = (
-                await message.channel.send(
-                    embed=embed,
-                    allowed_mentions=discord.AllowedMentions.none()
-                )
+            proposal_message = await message.channel.send(
+                embed=embed,
+                allowed_mentions=discord.AllowedMentions.none()
             )
 
-            await proposal_message.add_reaction(
-                "✅"
-            )
-
-            await proposal_message.add_reaction(
-                "❌"
-            )
+            await proposal_message.add_reaction("✅")
+            await proposal_message.add_reaction("❌")
 
         except discord.HTTPException as error:
 
@@ -3365,14 +3260,12 @@ async def on_message(
 
         has_link = (
             BLOCK_LINKS
-            and LINK_PATTERN.search(content)
-            is not None
+            and LINK_PATTERN.search(content) is not None
         )
 
         has_gif = (
             BLOCK_GIFS
-            and GIF_PATTERN.search(content)
-            is not None
+            and GIF_PATTERN.search(content) is not None
         )
 
         attachment_is_gif = False
@@ -3463,17 +3356,23 @@ async def on_member_join(
 
 
 # =========================================================
-# SETUP HOOK
+# READY
 # =========================================================
-# WAŻNE:
-# Tutaj synchronizujemy slash commands do konkretnego
-# serwera. Dzięki temu pojawiają się praktycznie od razu.
 
 @bot.event
-async def setup_hook():
+async def on_ready():
 
     print(
-        "🔄 Rozpoczynam konfigurację bota..."
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    )
+
+    print(
+        f"✅ Zalogowano jako {bot.user} "
+        f"(ID: {bot.user.id})"
+    )
+
+    print(
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
 
     # =====================================================
@@ -3522,6 +3421,13 @@ async def setup_hook():
             id=GUILD_ID
         )
 
+        # Kopiuje wszystkie globalne komendy do konkretnego serwera.
+        # Dzięki temu pojawiają się od razu na serwerze 666.6MC.
+        bot.tree.copy_global_to(
+            guild=guild
+        )
+
+        # Synchronizuje komendy z Discordem.
         synced = await bot.tree.sync(
             guild=guild
         )
@@ -3532,49 +3438,21 @@ async def setup_hook():
             f"na serwerze {GUILD_ID}."
         )
 
-        if synced:
+        for command in synced:
 
-            for command in synced:
-
-                print(
-                    f"   └─ /{command.name}"
-                )
+            print(
+                f"   └─ /{command.name}"
+            )
 
     except Exception as error:
 
         import traceback
 
         print(
-            f"❌ Błąd synchronizacji slash commands: "
-            f"{error}"
+            f"❌ Błąd synchronizacji slash commands: {error}"
         )
 
         traceback.print_exc()
-
-
-# =========================================================
-# READY
-# =========================================================
-
-@bot.event
-async def on_ready():
-
-    print(
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    )
-
-    print(
-        f"✅ Zalogowano jako {bot.user} "
-        f"(ID: {bot.user.id})"
-    )
-
-    print(
-        f"🏠 Serwer komend: {GUILD_ID}"
-    )
-
-    print(
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    )
 
     # =====================================================
     # PANEL WERYFIKACJI
@@ -3707,8 +3585,7 @@ async def on_ready():
                 if success:
 
                     print(
-                        f"✅ Panel rekrutacji sprawdzony "
-                        f"dla serwera {guild.id}."
+                        "✅ Panel rekrutacji został sprawdzony."
                     )
 
     except Exception as error:
@@ -3725,12 +3602,8 @@ async def on_ready():
 if not TOKEN:
 
     raise RuntimeError(
-        "❌ Brak DISCORD_TOKEN w zmiennych środowiskowych Railway."
+        "❌ Brak DISCORD_TOKEN."
     )
 
-
-print(
-    "🚀 Uruchamianie bota Discord..."
-)
 
 bot.run(TOKEN)
