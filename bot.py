@@ -12,7 +12,12 @@ from discord.ext import commands
 # KONFIGURACJA
 # =========================================================
 
-TOKEN = os.getenv("DISCORD_TOKEN")
+TOKEN = os.environ.get("DISCORD_TOKEN", "").strip()
+
+print(
+    "🔐 DISCORD_TOKEN:",
+    "USTAWIONY" if TOKEN else "BRAK"
+)
 
 TICKET_CATEGORY_ID = 1539334265022582784
 MEDIA_CHANNEL_ID = 1553347721770045440
@@ -26,6 +31,7 @@ RULES_CHANNEL_ID = 1553348189292339280
 
 LOBBY_CHANNEL_ID = 1553347858294509588
 CHANGELOG_CHANNEL_ID = 1543311008221630474
+
 
 # =========================================================
 # REKRUTACJA
@@ -384,8 +390,6 @@ class TicketModal(discord.ui.Modal):
             max_length=32
         )
 
-        # Formularz Płatność ma osobne pola:
-        # co kupuje, za ile oraz metoda płatności.
         if ticket_type == "platnosc":
 
             self.product = discord.ui.TextInput(
@@ -3578,8 +3582,11 @@ async def on_ready():
 if not TOKEN:
 
     raise RuntimeError(
-        "❌ Brak DISCORD_TOKEN."
+        "❌ Brak DISCORD_TOKEN w zmiennych środowiskowych Railway."
     )
 
+print(
+    "🚀 Uruchamianie bota Discord..."
+)
 
 bot.run(TOKEN)
