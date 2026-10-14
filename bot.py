@@ -1846,10 +1846,7 @@ def create_verification_embed():
 class VerificationView(discord.ui.View):
 
     def __init__(self):
-
-        super().__init__(
-            timeout=None
-        )
+        super().__init__(timeout=None)
 
     @discord.ui.button(
         label="Zweryfikuj się",
@@ -1862,9 +1859,59 @@ class VerificationView(discord.ui.View):
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
+        # ID roli nadawanej po pomyślnej weryfikacji
+        verification_role_id = 1539324900551163954
+
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "❌ Weryfikacja działa tylko na serwerze.",
+                ephemeral=True
+            )
+            return
+
+        role = interaction.guild.get_role(verification_role_id)
+        if role is None:
+            await interaction.response.send_message(
+                "❌ Nie znaleziono roli weryfikacyjnej. Sprawdź jej ID.",
+                ephemeral=True
+            )
+            return
+
+        member = interaction.user
+        if not isinstance(member, discord.Member):
+            try:
+                member = await interaction.guild.fetch_member(interaction.user.id)
+            except discord.HTTPException:
+                await interaction.response.send_message(
+                    "❌ Nie udało się znaleźć Twojego konta na serwerze.",
+                    ephemeral=True
+                )
+                return
+
+        if role in member.roles:
+            await interaction.response.send_message(
+                "✅ Masz już rolę weryfikacyjną!",
+                ephemeral=True
+            )
+            return
+
+        try:
+            await member.add_roles(role, reason="Weryfikacja na serwerze")
+        except discord.Forbidden:
+            await interaction.response.send_message(
+                "❌ Bot nie może nadać tej roli. Nadaj mu uprawnienie „Zarządzanie rolami” i przesuń jego najwyższą rolę nad rolę weryfikacyjną.",
+                ephemeral=True
+            )
+            return
+        except discord.HTTPException:
+            await interaction.response.send_message(
+                "❌ Discord nie pozwolił nadać roli. Spróbuj ponownie za chwilę.",
+                ephemeral=True
+            )
+            return
 
         await interaction.response.send_message(
-            "✅ Weryfikacja została wykonana.",
+            "✅ Weryfikacja zakończona! Nadano Ci rolę.",
             ephemeral=True
         )
 
