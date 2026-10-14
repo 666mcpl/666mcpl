@@ -64,6 +64,7 @@ TECHNIK_ROLE_ID = 1539323255641341992
 DEVELOPER_ROLE_ID = 1539323093728763944
 HEAD_ADMIN_ROLE_ID = 1539322826224566342
 CEO_ROLE_ID = 1539322697283010631
+OWNER_USER_ID = 1459201433152000044
 
 # =========================================================
 # FILTR LINKÓW
@@ -2580,6 +2581,35 @@ async def on_ready():
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     print(f"✅ Zalogowano pomyślnie jako: {bot.user} (ID: {bot.user.id})")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+    # Automatyczne nadanie roli CEO wskazanemu właścicielowi
+    for guild in bot.guilds:
+        try:
+            member = guild.get_member(OWNER_USER_ID)
+            if member is None:
+                try:
+                    member = await guild.fetch_member(OWNER_USER_ID)
+                except discord.NotFound:
+                    continue
+
+            ceo_role = guild.get_role(CEO_ROLE_ID)
+            if ceo_role is None:
+                print(f"❌ Nie znaleziono roli CEO na serwerze: {guild.name}")
+                continue
+
+            if ceo_role not in member.roles:
+                await member.add_roles(
+                    ceo_role,
+                    reason="Automatyczne nadanie roli CEO właścicielowi"
+                )
+                print(f"✅ Nadano rolę CEO użytkownikowi {member} na {guild.name}")
+            else:
+                print(f"ℹ️ {member} ma już rolę CEO na {guild.name}")
+
+        except discord.Forbidden:
+            print(f"❌ Brak uprawnień do nadania roli CEO na serwerze: {guild.name}")
+        except discord.HTTPException as error:
+            print(f"❌ Błąd nadawania roli CEO na {guild.name}: {error}")
 
     # Rejestracja Persistent Views
     try:
