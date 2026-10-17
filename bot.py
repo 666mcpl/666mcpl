@@ -853,41 +853,31 @@ class TicketSelect(discord.ui.Select):
 
     def __init__(self):
 
+        # Zwykły panel zawiera tylko cztery kategorie.
+        # Rekrutacja i Media mają osobne panele/procesy.
         options = [
-
             discord.SelectOption(
                 label="Pomoc",
-                                emoji="🆘",
+                description="Potrzebujesz pomocy lub wsparcia administracji?",
+                emoji="🛟",
                 value="pomoc"
             ),
-
-            discord.SelectOption(
-                label="Rekrutacja",
-                                emoji="📋",
-                value="rekrutacja"
-            ),
-
-            discord.SelectOption(
-                label="Media",
-                                emoji="🎥",
-                value="media"
-            ),
-
             discord.SelectOption(
                 label="Błąd",
-                                emoji="🐛",
+                description="Zgłoś błąd serwera, bota lub strony.",
+                emoji="🐞",
                 value="blad"
             ),
-
             discord.SelectOption(
                 label="Płatność",
-                                emoji="💳",
+                description="Chcesz dokonać płatności lub masz problem z zakupem?",
+                emoji="💳",
                 value="platnosc"
             ),
-
             discord.SelectOption(
                 label="Inne",
-                                emoji="💡",
+                description="Masz inną sprawę? Napisz do administracji.",
+                emoji="💬",
                 value="inne"
             )
         ]
@@ -952,8 +942,13 @@ def create_ticket_embed():
     return discord.Embed(
         title="🎫 CENTRUM TICKETÓW 666.6MC",
         description=(
-            "Potrzebujesz pomocy? 💚\n\n"
-            "Wybierz odpowiednią kategorię z menu poniżej."
+            "Witaj w centrum pomocy **666.6MC**! 💚\n\n"
+            "Wybierz kategorię z menu poniżej, a następnie wypełnij krótki formularz.\n\n"
+            "🛟 **Pomoc** — potrzebujesz wsparcia.\n"
+            "🐞 **Błąd** — chcesz zgłosić usterkę.\n"
+            "💳 **Płatność** — sprawa dotycząca zakupu lub płatności.\n"
+            "💬 **Inne** — każda pozostała sprawa.\n\n"
+            "🔒 Ticket będzie widoczny tylko dla Ciebie i uprawnionej administracji."
         ),
         color=discord.Color.from_rgb(
             46,
