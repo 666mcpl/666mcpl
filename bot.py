@@ -3465,15 +3465,26 @@ async def on_message(
     # LINKI / GIF
     # =====================================================
 
+    # Kanały ticketów rozpoznajemy po topic ustawianym podczas
+    # tworzenia ticketu (ticket_owner:<ID>|ticket_type:<typ>).
+    is_ticket_channel = (
+        isinstance(message.channel, discord.TextChannel)
+        and message.channel.topic is not None
+        and "ticket_owner:" in message.channel.topic
+    )
+
     if not has_bypass_role:
 
         content = message.content or ""
 
+        # Linki są dozwolone w ticketach; poza nimi nadal są blokowane.
         has_link = (
             BLOCK_LINKS
+            and not is_ticket_channel
             and LINK_PATTERN.search(content) is not None
         )
 
+        # Filtr GIF-ów pozostaje bez zmian, również w ticketach.
         has_gif = (
             BLOCK_GIFS
             and GIF_PATTERN.search(content) is not None
