@@ -450,38 +450,33 @@ class TicketModal(discord.ui.Modal):
             title=f"🎫 Ticket — {ticket_name}"
         )
 
-        self.minecraft_nick = discord.ui.TextInput(
-            label="Nick z Minecrafta",
-            placeholder="Wpisz swój nick z gry",
-            required=True,
-            max_length=32
-        )
+        self.fields = {}
 
-        # Formularz Płatność ma osobne pola:
-        # co kupuje, za ile oraz metoda płatności.
         if ticket_type == "platnosc":
-
+            self.minecraft_nick = discord.ui.TextInput(
+                label="Nick z Minecrafta",
+                placeholder="Wpisz swój nick z gry",
+                required=True,
+                max_length=32
+            )
             self.product = discord.ui.TextInput(
                 label="Co chcesz kupić?",
                 placeholder="Np. SVIP, ranga, przedmiot, usługa...",
                 required=True,
                 max_length=200
             )
-
             self.price = discord.ui.TextInput(
                 label="Za ile chcesz kupić?",
                 placeholder="Np. 20 zł",
                 required=True,
                 max_length=50
             )
-
             self.payment_method = discord.ui.TextInput(
                 label="Metoda płatności",
                 placeholder="Np. PayPal, BLIK, przelew...",
                 required=True,
                 max_length=100
             )
-
             self.description = discord.ui.TextInput(
                 label="Dodatkowe informacje",
                 placeholder="Napisz coś, co powinniśmy wiedzieć...",
@@ -489,15 +484,96 @@ class TicketModal(discord.ui.Modal):
                 required=False,
                 max_length=1000
             )
+            for item in (self.minecraft_nick, self.product, self.price, self.payment_method, self.description):
+                self.add_item(item)
 
+        elif ticket_type == "backup":
+            self.minecraft_nick = discord.ui.TextInput(
+                label="Nick z Minecrafta",
+                placeholder="Wpisz swój nick z gry",
+                required=True,
+                max_length=32
+            )
+            self.description = discord.ui.TextInput(
+                label="Opis sprawy",
+                placeholder="Opisz, jakiego backupu potrzebujesz",
+                style=discord.TextStyle.paragraph,
+                required=True,
+                max_length=1000
+            )
             self.add_item(self.minecraft_nick)
-            self.add_item(self.product)
-            self.add_item(self.price)
-            self.add_item(self.payment_method)
             self.add_item(self.description)
 
-        else:
+        elif ticket_type == "cheater":
+            self.minecraft_nick = discord.ui.TextInput(
+                label="Twój nick z Minecrafta",
+                placeholder="Wpisz swój nick z gry",
+                required=True,
+                max_length=32
+            )
+            self.cheater_nick = discord.ui.TextInput(
+                label="Nick podejrzanego gracza",
+                placeholder="Nick gracza, którego zgłaszasz",
+                required=True,
+                max_length=32
+            )
+            self.description = discord.ui.TextInput(
+                label="Opis sprawy",
+                placeholder="Opisz sytuację i dołącz dowody, jeśli je masz",
+                style=discord.TextStyle.paragraph,
+                required=True,
+                max_length=1000
+            )
+            for item in (self.minecraft_nick, self.cheater_nick, self.description):
+                self.add_item(item)
 
+        elif ticket_type == "skarga_admina":
+            self.admin_nick = discord.ui.TextInput(
+                label="Na którego administratora składasz skargę?",
+                placeholder="Nick administratora",
+                required=True,
+                max_length=32
+            )
+            self.description = discord.ui.TextInput(
+                label="Opis sprawy",
+                placeholder="Opisz dokładnie sytuację i podaj szczegóły",
+                style=discord.TextStyle.paragraph,
+                required=True,
+                max_length=1000
+            )
+            self.add_item(self.admin_nick)
+            self.add_item(self.description)
+
+        elif ticket_type == "odwolanie_bana":
+            self.minecraft_nick = discord.ui.TextInput(
+                label="Nick zbanowanego gracza",
+                placeholder="Nick gracza, który otrzymał bana",
+                required=True,
+                max_length=32
+            )
+            self.ban_admin = discord.ui.TextInput(
+                label="Nick administratora, który zbanował",
+                placeholder="Jeśli nie wiesz, wpisz: nie wiem",
+                required=True,
+                max_length=100
+            )
+            self.description = discord.ui.TextInput(
+                label="Opis sprawy",
+                placeholder="Wyjaśnij, dlaczego odwołujesz się od bana",
+                style=discord.TextStyle.paragraph,
+                required=True,
+                max_length=1000
+            )
+            for item in (self.minecraft_nick, self.ban_admin, self.description):
+                self.add_item(item)
+
+        else:
+            self.minecraft_nick = discord.ui.TextInput(
+                label="Nick z Minecrafta",
+                placeholder="Wpisz swój nick z gry",
+                required=True,
+                max_length=32
+            )
             self.description = discord.ui.TextInput(
                 label="Opis sprawy",
                 placeholder="Opisz dokładnie, w czym potrzebujesz pomocy...",
@@ -505,7 +581,6 @@ class TicketModal(discord.ui.Modal):
                 required=True,
                 max_length=1000
             )
-
             self.add_item(self.minecraft_nick)
             self.add_item(self.description)
 
@@ -695,46 +770,31 @@ class TicketModal(discord.ui.Modal):
             inline=False
         )
 
-        embed.add_field(
-            name="🎮 Nick z gry",
-            value=f"`{self.minecraft_nick.value}`",
-            inline=False
-        )
+        if self.ticket_type == "skarga_admina":
+            embed.add_field(
+                name="⚖️ Skarga na administratora",
+                value=f"`{self.admin_nick.value}`",
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="🎮 Nick z gry",
+                value=f"`{self.minecraft_nick.value}`",
+                inline=False
+            )
 
         if self.ticket_type == "platnosc":
-
-            embed.add_field(
-                name="🛒 Co chce kupić?",
-                value=self.product.value,
-                inline=False
-            )
-
-            embed.add_field(
-                name="💰 Za ile?",
-                value=self.price.value,
-                inline=True
-            )
-
-            embed.add_field(
-                name="💳 Metoda płatności",
-                value=self.payment_method.value,
-                inline=True
-            )
-
+            embed.add_field(name="🛒 Co chce kupić?", value=self.product.value, inline=False)
+            embed.add_field(name="💰 Za ile?", value=self.price.value, inline=True)
+            embed.add_field(name="💳 Metoda płatności", value=self.payment_method.value, inline=True)
             if self.description.value:
-                embed.add_field(
-                    name="📝 Dodatkowe informacje",
-                    value=self.description.value,
-                    inline=False
-                )
-
+                embed.add_field(name="📝 Dodatkowe informacje", value=self.description.value, inline=False)
         else:
-
-            embed.add_field(
-                name="📝 Opis sprawy",
-                value=self.description.value,
-                inline=False
-            )
+            if self.ticket_type == "cheater":
+                embed.add_field(name="🚨 Nick zgłaszanego gracza", value=f"`{self.cheater_nick.value}`", inline=False)
+            elif self.ticket_type == "odwolanie_bana":
+                embed.add_field(name="🛡️ Administrator, który nadał bana", value=self.ban_admin.value, inline=False)
+            embed.add_field(name="📝 Opis sprawy", value=self.description.value, inline=False)
 
         embed.set_footer(
             text="666.6MC • System ticketów"
@@ -865,6 +925,24 @@ class CloseTicketView(discord.ui.View):
 # PANEL TICKETÓW
 # =========================================================
 
+class BackupRecordingView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=180)
+
+    @discord.ui.button(label="Tak, mam nagranie", style=discord.ButtonStyle.success, emoji="✅")
+    async def has_recording(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(TicketModal("backup"))
+
+    @discord.ui.button(label="Nie mam nagrania", style=discord.ButtonStyle.danger, emoji="❌")
+    async def no_recording(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "❌ **Nie można utworzyć ticketu o backup bez nagrania.**\n"
+            "Przygotuj nagranie i wybierz kategorię Backup ponownie.",
+            ephemeral=True
+        )
+        self.stop()
+
+
 class TicketSelect(discord.ui.Select):
 
     def __init__(self):
@@ -872,54 +950,14 @@ class TicketSelect(discord.ui.Select):
         # Zwykły panel zawiera tylko cztery kategorie.
         # Rekrutacja i Media mają osobne panele/procesy.
         options = [
-            discord.SelectOption(
-                label="Pomoc",
-                description="Potrzebujesz pomocy lub wsparcia administracji?",
-                emoji="🛟",
-                value="pomoc"
-            ),
-            discord.SelectOption(
-                label="Błąd",
-                description="Zgłoś błąd serwera, bota lub strony.",
-                emoji="⚠️",
-                value="blad"
-            ),
-            discord.SelectOption(
-                label="Płatność",
-                description="Chcesz dokonać płatności lub masz problem z zakupem?",
-                emoji="💳",
-                value="platnosc"
-            ),
-            discord.SelectOption(
-                label="Inne",
-                description="Masz inną sprawę? Napisz do administracji.",
-                emoji="💬",
-                value="inne"
-            ),
-            discord.SelectOption(
-                label="Backup",
-                description="Chcesz otrzymać backup? Opisz, czego dotyczy prośba.",
-                emoji="💾",
-                value="backup"
-            ),
-            discord.SelectOption(
-                label="Zgłoś cheatera",
-                description="Zgłoś gracza podejrzanego o używanie cheatów.",
-                emoji="🕵️",
-                value="cheater"
-            ),
-            discord.SelectOption(
-                label="Skarga na administratora",
-                description="Chcesz złożyć skargę? Opisz sytuację i podaj szczegóły.",
-                emoji="⚖️",
-                value="skarga_admina"
-            ),
-            discord.SelectOption(
-                label="Odwołanie od bana",
-                description="Chcesz odwołać się od bana? Podaj nick i wyjaśnij sytuację.",
-                emoji="🔓",
-                value="odwolanie_bana"
-            )
+            discord.SelectOption(label="Pomoc", description="Potrzebujesz pomocy lub wsparcia administracji?", emoji="🛟", value="pomoc"),
+            discord.SelectOption(label="Płatność", description="Chcesz dokonać płatności lub masz problem z zakupem?", emoji="💳", value="platnosc"),
+            discord.SelectOption(label="Backup", description="Masz nagranie i chcesz poprosić o backup?", emoji="💾", value="backup"),
+            discord.SelectOption(label="Zgłoś cheatera", description="Zgłoś gracza podejrzanego o używanie cheatów.", emoji="🕵️", value="cheater"),
+            discord.SelectOption(label="Odwołanie od bana", description="Odwołaj się od bana i podaj szczegóły.", emoji="🔓", value="odwolanie_bana"),
+            discord.SelectOption(label="Błąd", description="Zgłoś błąd serwera, bota lub strony.", emoji="⚠️", value="blad"),
+            discord.SelectOption(label="Skarga na administratora", description="Złóż skargę na administratora i opisz sytuację.", emoji="⚖️", value="skarga_admina"),
+            discord.SelectOption(label="Inne", description="Masz inną sprawę? Napisz do administracji.", emoji="💬", value="inne")
         ]
 
         super().__init__(
@@ -936,6 +974,15 @@ class TicketSelect(discord.ui.Select):
     ):
 
         ticket_type = self.values[0]
+
+        if ticket_type == "backup":
+            await interaction.response.send_message(
+                "🎥 **Czy posiadasz nagranie potwierdzające prośbę o backup?**\n"
+                "Ticket zostanie utworzony tylko wtedy, gdy masz nagranie.",
+                view=BackupRecordingView(),
+                ephemeral=True
+            )
+            return
 
         try:
 
