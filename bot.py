@@ -945,6 +945,7 @@ def create_ticket_embed():
             "Witaj w centrum pomocy **666.6MC**! 💚\n\n"
           "Aby otrzymać pomoc od administratorów, rozwiń listę poniżej wiadomości.\n"
     "Zostaniesz przekierowany na kanał, w którym opiszesz swój problem."
+            
             "🔒 Ticket będzie widoczny tylko dla Ciebie i uprawnionej administracji."
         ),
         color=discord.Color.from_rgb(
