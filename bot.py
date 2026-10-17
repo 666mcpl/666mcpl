@@ -141,6 +141,22 @@ TICKET_TYPES = {
     "inne": {
         "name": "Inne",
         "emoji": "💡"
+    },
+    "backup": {
+        "name": "Chcę otrzymać backup",
+        "emoji": "💾"
+    },
+    "cheater": {
+        "name": "Zgłoszenie cheatera",
+        "emoji": "🕵️"
+    },
+    "skarga_admina": {
+        "name": "Skarga na administratora",
+        "emoji": "⚖️"
+    },
+    "odwolanie_bana": {
+        "name": "Odwołanie od bana",
+        "emoji": "🔓"
     }
 }
 
@@ -879,6 +895,30 @@ class TicketSelect(discord.ui.Select):
                 description="Masz inną sprawę? Napisz do administracji.",
                 emoji="💬",
                 value="inne"
+            ),
+            discord.SelectOption(
+                label="Backup",
+                description="Chcesz otrzymać backup? Opisz, czego dotyczy prośba.",
+                emoji="💾",
+                value="backup"
+            ),
+            discord.SelectOption(
+                label="Zgłoś cheatera",
+                description="Zgłoś gracza podejrzanego o używanie cheatów.",
+                emoji="🕵️",
+                value="cheater"
+            ),
+            discord.SelectOption(
+                label="Skarga na administratora",
+                description="Chcesz złożyć skargę? Opisz sytuację i podaj szczegóły.",
+                emoji="⚖️",
+                value="skarga_admina"
+            ),
+            discord.SelectOption(
+                label="Odwołanie od bana",
+                description="Chcesz odwołać się od bana? Podaj nick i wyjaśnij sytuację.",
+                emoji="🔓",
+                value="odwolanie_bana"
             )
         ]
 
@@ -942,10 +982,10 @@ def create_ticket_embed():
     return discord.Embed(
         title="🎫 CENTRUM TICKETÓW 666.6MC",
         description=(
-    "Aby otrzymać pomoc od administratorów, rozwiń listę poniżej wiadomości.\n"
-    "Zostaniesz przekierowany na kanał, w którym opiszesz swój problem.\n"
-    "\n"
-    "🔒 **Ticket będzie widoczny tylko dla Ciebie i uprawnionej administracji.** "
+            "Witaj w centrum pomocy **666.6MC**! 💚\n\n"
+            "Aby otrzymać pomoc od administratorów, rozwiń listę poniżej wiadomości.\n\n"
+            "Zostaniesz przekierowany na kanał, w którym opiszesz swój problem.\n\n"
+            "🔒 Ticket będzie widoczny tylko dla Ciebie i uprawnionej administracji."
         ),
         color=discord.Color.from_rgb(
             46,
