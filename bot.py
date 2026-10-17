@@ -865,7 +865,7 @@ class TicketSelect(discord.ui.Select):
             discord.SelectOption(
                 label="Błąd",
                 description="Zgłoś błąd serwera, bota lub strony.",
-                emoji="🐞",
+                emoji="⚠️",
                 value="blad"
             ),
             discord.SelectOption(
@@ -943,11 +943,8 @@ def create_ticket_embed():
         title="🎫 CENTRUM TICKETÓW 666.6MC",
         description=(
             "Witaj w centrum pomocy **666.6MC**! 💚\n\n"
-            "Wybierz kategorię z menu poniżej, a następnie wypełnij krótki formularz.\n\n"
-            "🛟 **Pomoc** — potrzebujesz wsparcia.\n"
-            "🐞 **Błąd** — chcesz zgłosić usterkę.\n"
-            "💳 **Płatność** — sprawa dotycząca zakupu lub płatności.\n"
-            "💬 **Inne** — każda pozostała sprawa.\n\n"
+            "Aby otrzymać pomoc od administratorów, rozwiń listę poniżej wiadomości.\n\n"
+            "Zostaniesz przekierowany na kanał, w którym opiszesz swój problem.\n\n"
             "🔒 Ticket będzie widoczny tylko dla Ciebie i uprawnionej administracji."
         ),
         color=discord.Color.from_rgb(
