@@ -3709,9 +3709,26 @@ async def on_voice_state_update(member, before, after):
 
         category = after.channel.category
         try:
+            # Zwykli gracze mogą korzystać z czatu kanału głosowego.
+            overwrites = {
+                member.guild.default_role: discord.PermissionOverwrite(
+                    view_channel=True,
+                    connect=True,
+                    send_messages=True,
+                    read_message_history=True,
+                ),
+                member: discord.PermissionOverwrite(
+                    view_channel=True,
+                    connect=True,
+                    speak=True,
+                    send_messages=True,
+                    read_message_history=True,
+                ),
+            }
             new_channel = await member.guild.create_voice_channel(
                 name=f"🎙・{member.display_name}",
                 category=category,
+                overwrites=overwrites,
                 reason=f"Własny kanał głosowy użytkownika {member} ({member.id})"
             )
             VOICE_CHANNEL_OWNERS[new_channel.id] = member.id
@@ -3755,53 +3772,90 @@ async def get_owned_voice_channel(interaction: discord.Interaction):
     return channel
 
 
-@bot.tree.command(name="voiceban", description="Blokuje użytkownikowi możliwość wejścia na Twój kanał głosowy.")
-@discord.app_commands.describe(gracz="Osoba, której chcesz zablokować wejście na swój kanał")
-async def voiceban(interaction: discord.Interaction, gracz: discord.Member):
-    channel = await get_owned_voice_channel(interaction)
-    if channel is None:
-        return
-    if gracz.id == interaction.user.id:
-        await safe_response(interaction, "❌ Nie możesz zablokować samemu sobie wejścia na kanał.")
-        return
-    if gracz.guild_permissions.administrator:
-        await safe_response(interaction, "❌ Nie możesz zablokować administratora serwera.")
-        return
+class VoiceMemberSelect(discord.ui.Select):
+    def __init__(self, channel: discord.VoiceChannel, owner: discord.Member, mode: str):
+        self.channel = channel
+        self.owner = owner
+        self.mode = mode
 
-    overwrite = channel.overwrites_for(gracz)
-    overwrite.connect = False
-    try:
-        await channel.set_permissions(gracz, overwrite=overwrite, reason=f"Blokada kanału przez właściciela {interaction.user}")
-        if gracz.voice and gracz.voice.channel == channel:
-            await gracz.move_to(None, reason="Właściciel kanału zablokował dostęp")
-        await safe_response(interaction, f"🔒 {gracz.mention} nie może już wejść na Twój kanał głosowy.")
-    except discord.Forbidden:
-        await safe_response(interaction, "❌ Bot nie ma uprawnień do zarządzania uprawnieniami kanału.")
-    except discord.HTTPException as error:
-        await safe_response(interaction, f"❌ Nie udało się zablokować dostępu: {error}")
-
-
-@bot.tree.command(name="voiceunban", description="Przywraca użytkownikowi możliwość wejścia na Twój kanał głosowy.")
-@discord.app_commands.describe(gracz="Osoba, której chcesz przywrócić dostęp do swojego kanału")
-async def voiceunban(interaction: discord.Interaction, gracz: discord.Member):
-    channel = await get_owned_voice_channel(interaction)
-    if channel is None:
-        return
-
-    overwrite = channel.overwrites_for(gracz)
-    overwrite.connect = None
-    try:
-        # Jeśli nie pozostały żadne nadpisane uprawnienia, usuń nadpisanie użytkownika.
-        if overwrite.is_empty():
-            await channel.set_permissions(gracz, overwrite=None, reason=f"Odblokowanie przez właściciela {interaction.user}")
+        if mode == "ban":
+            candidates = [m for m in channel.members if m.id != owner.id and not m.guild_permissions.administrator]
+            placeholder = "Wybierz gracza na swoim kanale do zablokowania"
+            options = [discord.SelectOption(label=m.display_name[:100], value=str(m.id), description=f"{m.name}"[:100]) for m in candidates[:25]]
         else:
-            await channel.set_permissions(gracz, overwrite=overwrite, reason=f"Odblokowanie przez właściciela {interaction.user}")
-        await safe_response(interaction, f"🔓 {gracz.mention} może ponownie wejść na Twój kanał głosowy.")
-    except discord.Forbidden:
-        await safe_response(interaction, "❌ Bot nie ma uprawnień do zarządzania uprawnieniami kanału.")
-    except discord.HTTPException as error:
-        await safe_response(interaction, f"❌ Nie udało się przywrócić dostępu: {error}")
+            candidates = []
+            for target, overwrite in channel.overwrites.items():
+                if isinstance(target, discord.Member) and overwrite.connect is False and target.id != owner.id and not target.guild_permissions.administrator:
+                    candidates.append(target)
+            placeholder = "Wybierz gracza, któremu przywrócić dostęp"
+            options = [discord.SelectOption(label=m.display_name[:100], value=str(m.id), description=f"{m.name}"[:100]) for m in candidates[:25]]
 
+        if not options:
+            options = [discord.SelectOption(label="Brak dostępnych graczy", value="none", description="Na razie nie ma kogo wybrać")]
+        super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.owner.id:
+            await interaction.response.send_message("❌ Tego menu może użyć tylko właściciel kanału.", ephemeral=True)
+            return
+        selected = self.values[0]
+        if selected == "none":
+            await interaction.response.send_message("ℹ️ Nie ma dostępnych graczy na tej liście.", ephemeral=True)
+            return
+        target = interaction.guild.get_member(int(selected))
+        if target is None:
+            await interaction.response.send_message("❌ Nie znaleziono tego gracza na serwerze.", ephemeral=True)
+            return
+        try:
+            overwrite = self.channel.overwrites_for(target)
+            if self.mode == "ban":
+                overwrite.connect = False
+                await self.channel.set_permissions(target, overwrite=overwrite, reason=f"Blokada przez właściciela {self.owner}")
+                if target.voice and target.voice.channel == self.channel:
+                    await target.move_to(None, reason="Właściciel kanału zablokował dostęp")
+                await interaction.response.send_message(f"🔒 **{target.display_name}** nie może już wejść na Twój kanał.", ephemeral=True)
+            else:
+                overwrite.connect = None
+                await self.channel.set_permissions(target, overwrite=None if overwrite.is_empty() else overwrite, reason=f"Odblokowanie przez właściciela {self.owner}")
+                await interaction.response.send_message(f"🔓 **{target.display_name}** może ponownie wejść na Twój kanał.", ephemeral=True)
+        except discord.Forbidden:
+            await interaction.response.send_message("❌ Bot nie ma uprawnień do zarządzania uprawnieniami kanału.", ephemeral=True)
+        except discord.HTTPException as error:
+            await interaction.response.send_message(f"❌ Nie udało się wykonać operacji: {error}", ephemeral=True)
+
+
+class VoiceMemberSelectView(discord.ui.View):
+    def __init__(self, channel: discord.VoiceChannel, owner: discord.Member, mode: str):
+        super().__init__(timeout=60)
+        self.add_item(VoiceMemberSelect(channel, owner, mode))
+
+
+@bot.tree.command(name="voiceban", description="Wybierz z listy gracza na swoim kanale, aby go zablokować.")
+async def voiceban(interaction: discord.Interaction):
+    channel = await get_owned_voice_channel(interaction)
+    if channel is None:
+        return
+    if not isinstance(channel, discord.VoiceChannel):
+        await safe_response(interaction, "❌ Ta komenda działa tylko na kanale głosowym.")
+        return
+    await interaction.response.send_message(
+        "🔒 **Kogo chcesz zablokować na swoim kanale głosowym?** Wybierz gracza z listy poniżej.",
+        view=VoiceMemberSelectView(channel, interaction.user, "ban"), ephemeral=True
+    )
+
+
+@bot.tree.command(name="voiceunban", description="Wybierz z listy zablokowanego gracza, aby przywrócić mu dostęp.")
+async def voiceunban(interaction: discord.Interaction):
+    channel = await get_owned_voice_channel(interaction)
+    if channel is None:
+        return
+    if not isinstance(channel, discord.VoiceChannel):
+        await safe_response(interaction, "❌ Ta komenda działa tylko na kanale głosowym.")
+        return
+    await interaction.response.send_message(
+        "🔓 **Komu chcesz przywrócić dostęp do swojego kanału?** Wybierz gracza z listy poniżej.",
+        view=VoiceMemberSelectView(channel, interaction.user, "unban"), ephemeral=True
+    )
 
 # =========================================================
 # READY
