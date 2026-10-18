@@ -14,6 +14,7 @@ from discord.ext import commands
 # =========================================================
 
 TOKEN = os.getenv("DISCORD_TOKEN")
+GUILD_ID = 1539322598775586938  # Serwer, na którym komendy mają pojawiać się od razu
 
 TICKET_CATEGORY_ID = 1539334265022582784
 MEDIA_CHANNEL_ID = 1553347721770045440
@@ -3919,17 +3920,20 @@ async def on_ready():
 
     try:
 
-        synced = await bot.tree.sync()
+        # Kopiujemy komendy globalne na wskazany serwer i synchronizujemy je
+        # lokalnie, dzięki czemu /voiceban i /voiceunban powinny pojawić się szybciej.
+        guild = discord.Object(id=GUILD_ID)
+        bot.tree.copy_global_to(guild=guild)
+        synced = await bot.tree.sync(guild=guild)
 
         print(
-            f"✅ Zsynchronizowano "
-            f"{len(synced)} komend."
+            f"✅ Zsynchronizowano {len(synced)} komend na serwerze {GUILD_ID}."
         )
 
     except Exception as error:
 
         print(
-            f"❌ Błąd synchronizacji komend: {error}"
+            f"❌ Błąd synchronizacji komend na serwerze {GUILD_ID}: {error}"
         )
 
     # =====================================================
