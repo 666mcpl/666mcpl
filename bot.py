@@ -1,5 +1,6 @@
 import os
 import asyncio
+import json
 import random
 import re
 from datetime import datetime, timedelta
@@ -23,6 +24,11 @@ POLL_CHANNEL_ID = 1553347567612592239
 PROPOSAL_CHANNEL_ID = 1553348406460678264
 CONTEST_CHANNEL_ID = 1553347368429031556
 RULES_CHANNEL_ID = 1553348189292339280
+
+# ID kanału GŁOSOWEGO „kliknij, aby stworzyć własny kanał”.
+# Wklej tutaj ID kanału, do którego użytkownicy będą wchodzić, aby utworzyć swój kanał.
+VOICE_CREATE_CHANNEL_ID = 1561167941691645982
+VOICE_CHANNELS_FILE = "voice_channels.json"
 
 LOBBY_CHANNEL_ID = 1553347858294509588
 CHANGELOG_CHANNEL_ID = 1543311008221630474
@@ -111,6 +117,39 @@ bot = commands.Bot(
     command_prefix="!",
     intents=intents
 )
+
+
+# =========================================================
+# WŁASNE KANAŁY GŁOSOWE
+# =========================================================
+
+# Mapa: ID kanału głosowego -> ID właściciela.
+VOICE_CHANNEL_OWNERS = {}
+
+
+def load_voice_channel_owners():
+    """Wczytuje zapisane kanały, aby działały także po restarcie bota."""
+    global VOICE_CHANNEL_OWNERS
+    try:
+        with open(VOICE_CHANNELS_FILE, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        VOICE_CHANNEL_OWNERS = {
+            int(channel_id): int(owner_id)
+            for channel_id, owner_id in data.items()
+        }
+    except (FileNotFoundError, json.JSONDecodeError, TypeError, ValueError):
+        VOICE_CHANNEL_OWNERS = {}
+
+
+def save_voice_channel_owners():
+    try:
+        with open(VOICE_CHANNELS_FILE, "w", encoding="utf-8") as file:
+            json.dump(VOICE_CHANNEL_OWNERS, file, ensure_ascii=False, indent=2)
+    except OSError as error:
+        print(f"❌ Nie udało się zapisać kanałów głosowych: {error}")
+
+
+load_voice_channel_owners()
 
 
 # =========================================================
@@ -1029,10 +1068,10 @@ def create_ticket_embed():
     return discord.Embed(
         title="🎫 CENTRUM TICKETÓW 666.6MC",
         description=(
-         "Aby otrzymać pomoc od administratorów, rozwiń listę poniżej wiadomości.\n"
-    "Zostaniesz przekierowany na kanał, w którym opiszesz swój problem.\n"
-    "\n"
-    "**🔒 Ticket będzie widoczny tylko dla Ciebie i uprawnionej administracji.**"
+            "Witaj w centrum pomocy **666.6MC**! 💚\n\n"
+            "Aby otrzymać pomoc od administratorów, rozwiń listę poniżej wiadomości.\n\n"
+            "Zostaniesz przekierowany na kanał, w którym opiszesz swój problem.\n\n"
+            "🔒 Ticket będzie widoczny tylko dla Ciebie i uprawnionej administracji."
         ),
         color=discord.Color.from_rgb(
             46,
@@ -3655,6 +3694,113 @@ async def on_member_join(
         print(
             f"❌ Błąd powitania: {error}"
         )
+
+
+# =========================================================
+# AUTOMATYCZNE TWORZENIE I USUWANIE KANAŁÓW GŁOSOWYCH
+# =========================================================
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    # Wejście na kanał „kliknij, aby stworzyć swój kanał”.
+    if after.channel is not None and after.channel.id == VOICE_CREATE_CHANNEL_ID:
+        if VOICE_CREATE_CHANNEL_ID == 0:
+            return
+
+        category = after.channel.category
+        try:
+            new_channel = await member.guild.create_voice_channel(
+                name=f"🎙・{member.display_name}",
+                category=category,
+                reason=f"Własny kanał głosowy użytkownika {member} ({member.id})"
+            )
+            VOICE_CHANNEL_OWNERS[new_channel.id] = member.id
+            save_voice_channel_owners()
+            await member.move_to(new_channel, reason="Przeniesienie na własny kanał głosowy")
+        except discord.Forbidden:
+            print("❌ Brak uprawnień do tworzenia kanałów lub przenoszenia użytkowników.")
+        except discord.HTTPException as error:
+            print(f"❌ Błąd tworzenia kanału głosowego: {error}")
+
+    # Automatyczne usuwanie pustego kanału utworzonego przez bota.
+    old_channel = before.channel
+    if old_channel is not None and old_channel.id in VOICE_CHANNEL_OWNERS and len(old_channel.members) == 0:
+        try:
+            await old_channel.delete(reason="Automatyczne usunięcie pustego kanału głosowego")
+        except discord.NotFound:
+            pass
+        except discord.Forbidden:
+            print("❌ Brak uprawnień do usunięcia pustego kanału głosowego.")
+        except discord.HTTPException as error:
+            print(f"❌ Błąd usuwania kanału głosowego: {error}")
+        finally:
+            VOICE_CHANNEL_OWNERS.pop(old_channel.id, None)
+            save_voice_channel_owners()
+
+
+async def get_owned_voice_channel(interaction: discord.Interaction):
+    if interaction.guild is None or not isinstance(interaction.user, discord.Member):
+        await safe_response(interaction, "❌ Tej komendy można użyć tylko na serwerze.")
+        return None
+
+    channel = interaction.user.voice.channel if interaction.user.voice else None
+    if channel is None or channel.id not in VOICE_CHANNEL_OWNERS:
+        await safe_response(interaction, "❌ Wejdź na swój utworzony kanał głosowy, aby użyć tej komendy.")
+        return None
+
+    if VOICE_CHANNEL_OWNERS.get(channel.id) != interaction.user.id:
+        await safe_response(interaction, "❌ Możesz zarządzać tylko własnym kanałem głosowym.")
+        return None
+
+    return channel
+
+
+@bot.tree.command(name="voiceban", description="Blokuje użytkownikowi możliwość wejścia na Twój kanał głosowy.")
+@discord.app_commands.describe(gracz="Osoba, której chcesz zablokować wejście na swój kanał")
+async def voiceban(interaction: discord.Interaction, gracz: discord.Member):
+    channel = await get_owned_voice_channel(interaction)
+    if channel is None:
+        return
+    if gracz.id == interaction.user.id:
+        await safe_response(interaction, "❌ Nie możesz zablokować samemu sobie wejścia na kanał.")
+        return
+    if gracz.guild_permissions.administrator:
+        await safe_response(interaction, "❌ Nie możesz zablokować administratora serwera.")
+        return
+
+    overwrite = channel.overwrites_for(gracz)
+    overwrite.connect = False
+    try:
+        await channel.set_permissions(gracz, overwrite=overwrite, reason=f"Blokada kanału przez właściciela {interaction.user}")
+        if gracz.voice and gracz.voice.channel == channel:
+            await gracz.move_to(None, reason="Właściciel kanału zablokował dostęp")
+        await safe_response(interaction, f"🔒 {gracz.mention} nie może już wejść na Twój kanał głosowy.")
+    except discord.Forbidden:
+        await safe_response(interaction, "❌ Bot nie ma uprawnień do zarządzania uprawnieniami kanału.")
+    except discord.HTTPException as error:
+        await safe_response(interaction, f"❌ Nie udało się zablokować dostępu: {error}")
+
+
+@bot.tree.command(name="voiceunban", description="Przywraca użytkownikowi możliwość wejścia na Twój kanał głosowy.")
+@discord.app_commands.describe(gracz="Osoba, której chcesz przywrócić dostęp do swojego kanału")
+async def voiceunban(interaction: discord.Interaction, gracz: discord.Member):
+    channel = await get_owned_voice_channel(interaction)
+    if channel is None:
+        return
+
+    overwrite = channel.overwrites_for(gracz)
+    overwrite.connect = None
+    try:
+        # Jeśli nie pozostały żadne nadpisane uprawnienia, usuń nadpisanie użytkownika.
+        if overwrite.is_empty():
+            await channel.set_permissions(gracz, overwrite=None, reason=f"Odblokowanie przez właściciela {interaction.user}")
+        else:
+            await channel.set_permissions(gracz, overwrite=overwrite, reason=f"Odblokowanie przez właściciela {interaction.user}")
+        await safe_response(interaction, f"🔓 {gracz.mention} może ponownie wejść na Twój kanał głosowy.")
+    except discord.Forbidden:
+        await safe_response(interaction, "❌ Bot nie ma uprawnień do zarządzania uprawnieniami kanału.")
+    except discord.HTTPException as error:
+        await safe_response(interaction, f"❌ Nie udało się przywrócić dostępu: {error}")
 
 
 # =========================================================
