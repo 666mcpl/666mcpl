@@ -848,6 +848,26 @@ class TicketModal(discord.ui.Modal):
                 view=CloseTicketView()
             )
 
+            # Automatyczny link do płatności wyłącznie w ticketach płatności.
+            if self.ticket_type == "platnosc":
+                payment_embed = discord.Embed(
+                    title="💳 Instrukcja płatności — 666MC.PL",
+                    description=(
+                        "🔗 **Link do płatności:** https://tipply.pl/@neron\n\n"
+                        "**Jak dokonać płatności?**\n"
+                        "**1.** Wpisz swój nick z Minecrafta.\n"
+                        "**2.** Podaj adres e-mail, na który ma przyjść potwierdzenie płatności.\n"
+                        "**3.** W polu treści wiadomości wpisz dodatkowe informacje, jeśli chcesz coś dodać do zakupu (np. ważne informacje dla administracji).\n"
+                        "**4.** Kliknij **„Przejdź dalej”**.\n"
+                        "**5.** Wybierz kwotę oraz metodę płatności.\n"
+                        "**6.** Zaakceptuj regulamin Tipply i przejdź do płatności.\n\n"
+                        "✅ **Po opłaceniu zamówienia poczekaj na administratora**, który nada Ci vPLN.\n"
+                        "💰 Stan swojego salda sprawdzisz komendą `/portfel`."
+                    ),
+                    color=discord.Color.from_rgb(46, 204, 113)
+                )
+                await channel.send(embed=payment_embed)
+
             await safe_response(
                 interaction,
                 f"✅ Ticket został utworzony: {channel.mention}"
@@ -2472,26 +2492,23 @@ async def ankieta(
 
 @bot.tree.command(
     name="glosy",
-    description="Pokazuje, kto zagłosował na którą opcję w trwającej ankiecie."
+    description="Pokazuje, kto zagłosował w ankietach i kto dołączył do konkursów."
 )
 async def glosy(interaction: discord.Interaction):
     if interaction.guild is None:
         await safe_response(interaction, "❌ Komenda dostępna tylko na serwerze.")
         return
 
-    # Tylko CEO może podejrzeć listę głosujących.
+    # Tylko CEO może podejrzeć listy głosujących i uczestników.
     ceo_role = interaction.guild.get_role(CEO_ROLE_ID)
     if ceo_role is None or ceo_role not in interaction.user.roles:
         await safe_response(interaction, "❌ Tylko CEO może korzystać z tej komendy.")
         return
 
-    # Lista ankiet jest przechowywana w pamięci bota.
+    embeds = []
+
+    # Ankiety: pokazuje, kto wybrał każdą opcję.
     polls = [poll for poll in ACTIVE_POLLS if not poll.finished]
-
-    if not polls:
-        await safe_response(interaction, "ℹ️ Nie ma obecnie trwającej ankiety.")
-        return
-
     for poll in polls:
         one_names = []
         two_names = []
@@ -2520,14 +2537,45 @@ async def glosy(interaction: discord.Interaction):
             inline=False
         )
         embed.set_footer(text="666.6MC • Lista głosujących")
+        embeds.append(embed)
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+    # Konkursy: pokazuje uczestników, którzy kliknęli przycisk udziału.
+    contests = [contest for contest in ACTIVE_CONTESTS if not contest.finished]
+    for contest in contests:
+        participant_names = []
+        for user_id in contest.participants:
+            member = interaction.guild.get_member(user_id)
+            participant_names.append(member.mention if member else f"`{user_id}`")
+
+        embed = discord.Embed(
+            title="🎉 UCZESTNICY — KONKURS",
+            description=f"**Nagroda:** {contest.prize}",
+            color=discord.Color.from_rgb(46, 204, 113)
+        )
+        embed.add_field(
+            name=f"👥 Uczestnicy — {len(participant_names)}",
+            value="\n".join(participant_names)[:1024] if participant_names else "Nikt jeszcze nie dołączył",
+            inline=False
+        )
+        embed.set_footer(text="666.6MC • Lista uczestników konkursu")
+        embeds.append(embed)
+
+    if not embeds:
+        await safe_response(interaction, "ℹ️ Nie ma obecnie trwających ankiet ani konkursów.")
         return
+
+    # Discord pozwala wysłać maksymalnie 10 embedów w jednej wiadomości.
+    await interaction.response.send_message(embeds=embeds[:10], ephemeral=True)
+    for offset in range(10, len(embeds), 10):
+        await interaction.followup.send(embeds=embeds[offset:offset + 10], ephemeral=True)
 
 
 # =========================================================
 # KONKURSY
 # =========================================================
+
+ACTIVE_CONTESTS = []
+
 
 class ContestData:
 
@@ -2871,6 +2919,7 @@ class ContestModal(discord.ui.Modal):
             duration_minutes=duration_minutes,
             creator_id=interaction.user.id
         )
+        ACTIVE_CONTESTS.append(contest)
 
         view = ContestView(contest)
 
