@@ -4,6 +4,7 @@ import json
 import random
 import re
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import discord
 from discord.ext import commands
@@ -14,6 +15,29 @@ from discord.ext import commands
 # =========================================================
 
 TOKEN = os.getenv("DISCORD_TOKEN")
+
+# Grafiki banerów umieść w folderze images/ obok pliku bota.
+IMAGE_DIR = Path("images")
+LOBBY_IMAGE = IMAGE_DIR / "lobby.png"
+VERIFICATION_IMAGE = IMAGE_DIR / "weryfikacja.png"
+TICKET_IMAGE = IMAGE_DIR / "tickety.png"
+PROPOSAL_IMAGE = IMAGE_DIR / "propozycje.png"
+
+
+def make_image_file(path: Path):
+    """Zwraca plik grafiki, jeśli istnieje; w przeciwnym razie None."""
+    try:
+        return discord.File(path, filename=path.name) if path.is_file() else None
+    except OSError as error:
+        print(f"⚠️ Nie udało się otworzyć grafiki {path}: {error}")
+        return None
+
+
+def set_banner_image(embed: discord.Embed, path: Path):
+    """Ustawia baner jako obrazek embeda, jeśli plik jest dostępny."""
+    if path.is_file():
+        embed.set_image(url=f"attachment://{path.name}")
+    return embed
 GUILD_ID = 1539322598775586938  # Serwer, na którym komendy mają pojawiać się od razu
 
 TICKET_CATEGORY_ID = 1539334265022582784
@@ -1969,7 +1993,7 @@ def create_media_embed():
 
 def create_verification_embed():
 
-    return discord.Embed(
+    embed = discord.Embed(
         title="💚 WERYFIKACJA 666.6MC",
         description=(
             "Kliknij przycisk poniżej, aby się zweryfikować."
@@ -1980,6 +2004,7 @@ def create_verification_embed():
             113
         )
     )
+    return set_banner_image(embed, VERIFICATION_IMAGE)
 
 
 class VerificationView(discord.ui.View):
@@ -3553,11 +3578,17 @@ async def on_message(
             embed.set_footer(
                 text="666.6MC • System propozycji"
             )
+            set_banner_image(embed, PROPOSAL_IMAGE)
+            proposal_file = make_image_file(PROPOSAL_IMAGE)
 
-            proposal_message = await message.channel.send(
-                embed=embed,
-                allowed_mentions=discord.AllowedMentions.none()
-            )
+            send_kwargs = {
+                "embed": embed,
+                "allowed_mentions": discord.AllowedMentions.none()
+            }
+            if proposal_file is not None:
+                send_kwargs["file"] = proposal_file
+
+            proposal_message = await message.channel.send(**send_kwargs)
 
             await proposal_message.add_reaction("✅")
             await proposal_message.add_reaction("❌")
@@ -3732,12 +3763,14 @@ async def on_member_join(
     embed.set_footer(
         text="666.6MC • Witamy na serwerze!"
     )
+    set_banner_image(embed, LOBBY_IMAGE)
+    lobby_file = make_image_file(LOBBY_IMAGE)
 
     try:
-
-        await channel.send(
-            embed=embed
-        )
+        if lobby_file is not None:
+            await channel.send(embed=embed, file=lobby_file)
+        else:
+            await channel.send(embed=embed)
 
     except discord.HTTPException as error:
 
@@ -4003,38 +4036,37 @@ async def on_ready():
 
         else:
 
-            exists = False
+            panel_message = None
 
-            async for message in channel.history(
-                limit=50
-            ):
-
+            async for message in channel.history(limit=50):
                 if (
                     message.author == bot.user
                     and message.embeds
-                    and message.embeds[0].title
-                    == "💚 WERYFIKACJA 666.6MC"
+                    and message.embeds[0].title == "💚 WERYFIKACJA 666.6MC"
                 ):
-
-                    exists = True
+                    panel_message = message
                     break
 
-            if not exists:
+            verification_embed = create_verification_embed()
+            verification_file = make_image_file(VERIFICATION_IMAGE)
 
-                await channel.send(
-                    embed=create_verification_embed(),
-                    view=VerificationView()
-                )
-
-                print(
-                    "✅ Wysłano panel weryfikacji."
-                )
-
+            if panel_message is not None:
+                edit_kwargs = {
+                    "embed": verification_embed,
+                    "view": VerificationView(),
+                    "attachments": [verification_file] if verification_file else []
+                }
+                await panel_message.edit(**edit_kwargs)
+                print("✅ Zaktualizowano panel weryfikacji z banerem.")
             else:
-
-                print(
-                    "✅ Panel weryfikacji już istnieje."
-                )
+                send_kwargs = {
+                    "embed": verification_embed,
+                    "view": VerificationView()
+                }
+                if verification_file is not None:
+                    send_kwargs["file"] = verification_file
+                await channel.send(**send_kwargs)
+                print("✅ Wysłano panel weryfikacji.")
 
     except discord.HTTPException as error:
 
@@ -4060,38 +4092,37 @@ async def on_ready():
 
         else:
 
-            panel_exists = False
+            panel_message = None
 
-            async for message in channel.history(
-                limit=50
-            ):
-
+            async for message in channel.history(limit=50):
                 if (
                     message.author == bot.user
                     and message.embeds
-                    and message.embeds[0].title
-                    == "🎫 CENTRUM TICKETÓW 666.6MC"
+                    and message.embeds[0].title == "🎫 CENTRUM TICKETÓW 666.6MC"
                 ):
-
-                    panel_exists = True
+                    panel_message = message
                     break
 
-            if not panel_exists:
+            ticket_embed = create_ticket_embed()
+            ticket_file = make_image_file(TICKET_IMAGE)
 
-                await channel.send(
-                    embed=create_ticket_embed(),
-                    view=TicketPanelView()
-                )
-
-                print(
-                    "✅ Panel ticketów został wysłany."
-                )
-
+            if panel_message is not None:
+                edit_kwargs = {
+                    "embed": ticket_embed,
+                    "view": TicketPanelView(),
+                    "attachments": [ticket_file] if ticket_file else []
+                }
+                await panel_message.edit(**edit_kwargs)
+                print("✅ Zaktualizowano panel ticketów z banerem.")
             else:
-
-                print(
-                    "✅ Panel ticketów już istnieje."
-                )
+                send_kwargs = {
+                    "embed": ticket_embed,
+                    "view": TicketPanelView()
+                }
+                if ticket_file is not None:
+                    send_kwargs["file"] = ticket_file
+                await channel.send(**send_kwargs)
+                print("✅ Wysłano panel ticketów z banerem.")
 
     except discord.HTTPException as error:
 
